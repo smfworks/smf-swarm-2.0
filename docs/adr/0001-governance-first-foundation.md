@@ -19,6 +19,7 @@ Capability diagnosis is a **first-class platform module**, not SkillOpt-only cod
 - All Phase 1 pipeline actions are identity-bound and auditable.
 - Later crypto can replace identity store without changing call sites if interfaces hold.
 - Offline tests remain fast and network-free.
+- **Status (2026-07-13):** Phase 1 implementation met DoD; dual-path diagnostic (mock CI / LLM prod) validated on SkillOpt-style fixture. See `docs/PHASE1_STATUS.md`.
 
 ## Alternatives considered
 
