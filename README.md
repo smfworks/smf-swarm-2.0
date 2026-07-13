@@ -4,8 +4,8 @@
 
 | | |
 |--|--|
-| Version | **0.3.0** |
-| Product | Standalone app (UI + CLI + history/export) + Phase 1 library |
+| Version | **0.4.0** |
+| Product | App with UI, charts, share links, optional auth, CLI |
 | Repo | https://github.com/smfworks/smf-swarm-2.0 (private) |
 
 ## What you get
@@ -18,12 +18,21 @@
 
 ## Install (humans or agents)
 
+See **[INSTALL.md](INSTALL.md)** for full end-user instructions.
+
 ```bash
 git clone https://github.com/smfworks/smf-swarm-2.0.git
 cd smf-swarm-2.0
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[app]"
+smf-swarm serve --host 127.0.0.1 --port 8787
 ```
+
+### Auth & share (v0.4)
+
+- Optional: `export SMF_SWARM_API_TOKEN=...` to lock analyze/history  
+- Every run gets a public share page at `/share/{share_id}` (Copy share link in UI)  
+- CSV attachments produce sparklines in the report  
 
 ### Start the UI
 

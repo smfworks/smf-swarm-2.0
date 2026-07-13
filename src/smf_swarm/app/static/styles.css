@@ -238,4 +238,11 @@ textarea { resize: vertical; min-height: 120px; }
 }
 .persona .name { font-weight: 600; font-size: 0.92rem; }
 .persona .role { color: var(--muted); font-size: 0.78rem; margin-bottom: 0.35rem; }
+.chart-card {
+  margin: 0.65rem 0; padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: rgba(0,0,0,0.18);
+}
+.chart-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.35rem; }
+.sparkline svg { display: block; width: 100%; height: 56px; }
 .muted { color: var(--muted); }

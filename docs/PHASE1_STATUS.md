@@ -52,6 +52,12 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 - Default: `diagnostic_backend=swarm`, `swarm_diagnostic_mode=mock`
 - Legacy in-tree diagnostic remains available
 
+## Product app v0.4 (2026-07-13)
+
+Charts (CSV sparklines), optional API token auth, public share links, INSTALL.md + LICENSE packaging polish.
+
+See `docs/PRODUCT_APP_v0.4.md` and `INSTALL.md`.
+
 ## Product app v0.3 (2026-07-13)
 
 Quality sprint shipped: evidence binding, methodology strip, prediction headline/detail,

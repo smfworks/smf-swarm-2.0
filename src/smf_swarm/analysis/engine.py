@@ -18,6 +18,7 @@ class Attachment:
     content_type: str
     text: str
     size_bytes: int = 0
+    charts: List[Any] = field(default_factory=list)
 
     def preview(self, n: int = 4000) -> str:
         return self.text[:n]
@@ -60,6 +61,9 @@ class PredictiveReport:
     evidence: List[EvidenceItem]
     attachments_used: List[str]
     methodology: Dict[str, Any]
+    charts: List[Dict[str, Any]] = field(default_factory=list)
+    share_id: str = ""
+    share_path: str = ""
     model_used: str = ""
     fallback_used: bool = False
     audit_events: int = 0
@@ -113,6 +117,18 @@ class PredictiveReport:
         lines += ["", "## Evidence", ""]
         for e in self.evidence:
             lines.append(f"- **[{e.source}]** {e.claim} — _{e.excerpt[:200]}_")
+        lines += ["", "## Charts", ""]
+        if self.charts:
+            for c in self.charts:
+                name = c.get("name", "series") if isinstance(c, dict) else getattr(c, "name", "series")
+                fn = c.get("filename", "") if isinstance(c, dict) else getattr(c, "filename", "")
+                stats = c.get("stats", {}) if isinstance(c, dict) else getattr(c, "stats", {})
+                lines.append(
+                    f"- **{fn}:{name}** n={stats.get('n', '?')} "
+                    f"last={stats.get('last', '?')} Δ={stats.get('delta', '?')}"
+                )
+        else:
+            lines.append("- No numeric series charts")
         lines += ["", "## Risks", ""]
         for r in self.risks:
             lines.append(f"- {r}")
@@ -591,6 +607,17 @@ def _methodology(
     }
 
 
+def _collect_charts(attachments: Sequence[Attachment]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for a in attachments:
+        for c in getattr(a, "charts", None) or []:
+            if hasattr(c, "to_dict"):
+                out.append(c.to_dict())
+            elif isinstance(c, dict):
+                out.append(c)
+    return out
+
+
 class PredictiveSwarmEngine:
     """Governed predictive analysis entrypoint."""
 
@@ -756,6 +783,7 @@ class PredictiveSwarmEngine:
             methodology=_methodology(
                 self.mode, model_used, self.fallback_used, len(attachments)
             ),
+            charts=_collect_charts(attachments),
             model_used=model_used,
             fallback_used=self.fallback_used,
             audit_events=len(self.audit),

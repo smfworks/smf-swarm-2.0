@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include AGENTS.md
+include INSTALL.md
+include pyproject.toml
+recursive-include src/smf_swarm/app/static *
+recursive-include fixtures *
+recursive-include docs *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]

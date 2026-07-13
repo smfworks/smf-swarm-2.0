@@ -30,6 +30,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         PredictiveSwarmEngine,
         extract_text_from_bytes,
     )
+    from smf_swarm.analysis.series import extract_series_from_attachment_bytes
 
     question = args.question
     if args.question_file:
@@ -43,18 +44,20 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         path = Path(p)
         raw = path.read_bytes()
         text = extract_text_from_bytes(path.name, raw)
+        charts = extract_series_from_attachment_bytes(path.name, raw)
         attachments.append(
             Attachment(
                 filename=path.name,
                 content_type="application/octet-stream",
                 text=text,
                 size_bytes=len(raw),
+                charts=charts,
             )
         )
 
     engine = PredictiveSwarmEngine(
         mode=args.mode,
-        audit_path=args.audit,
+        audit_path=args.audit or None,
         llm_model=args.model,
         llm_base_url=args.base_url,
     )

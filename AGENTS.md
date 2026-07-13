@@ -1,7 +1,7 @@
 # AGENTS.md — SMF Swarm
 
 **Package:** `smf-swarm`  
-**Version:** 0.3.0  
+**Version:** 0.4.0  
 **Role:** Standalone predictive analysis app + governance-first swarm library  
 
 ## For AI agents installing / operating this package

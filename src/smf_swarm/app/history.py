@@ -25,6 +25,7 @@ class RunHistory:
         # Store a compact summary + full report
         slim = {
             "run_id": report.get("run_id"),
+            "share_id": report.get("share_id"),
             "created_at": report.get("created_at"),
             "question": report.get("question"),
             "mode": report.get("mode"),
@@ -63,6 +64,8 @@ class RunHistory:
             out.append(
                 {
                     "run_id": it.get("run_id"),
+                    "share_id": it.get("share_id")
+                    or (it.get("report") or {}).get("share_id"),
                     "created_at": it.get("created_at"),
                     "question": it.get("question"),
                     "mode": it.get("mode"),
@@ -84,5 +87,20 @@ class RunHistory:
             except json.JSONDecodeError:
                 continue
             if it.get("run_id") == run_id:
+                return it.get("report") or it
+        return None
+
+    def get_by_share_id(self, share_id: str) -> Optional[Dict[str, Any]]:
+        if not share_id or not self.path.exists():
+            return None
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                it = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            sid = it.get("share_id") or (it.get("report") or {}).get("share_id")
+            if sid == share_id:
                 return it.get("report") or it
         return None

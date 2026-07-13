@@ -4,15 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smf-swarm"
-version = "0.3.0"
-description = "SMF Swarm — governance-first predictive analysis app (UI + CLI + history/export)"
+version = "0.4.0"
+description = "SMF Swarm — governance-first predictive analysis app with UI, charts, share links, and CLI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "SMF Works" }]
+keywords = ["agents", "swarm", "predictive-analysis", "llm", "decision-support"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Environment :: Web Environment",
+  "Operating System :: OS Independent",
+]
 dependencies = [
   "pydantic>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/smfworks/smf-swarm-2.0"
+Documentation = "https://github.com/smfworks/smf-swarm-2.0/blob/main/INSTALL.md"
+Repository = "https://github.com/smfworks/smf-swarm-2.0"
+Issues = "https://github.com/smfworks/smf-swarm-2.0/issues"
 
 [project.optional-dependencies]
 llm = ["httpx>=0.27"]
@@ -28,6 +48,7 @@ dev = [
   "fastapi>=0.110",
   "uvicorn[standard]>=0.27",
   "python-multipart>=0.0.9",
+  "build>=1.0",
 ]
 
 [project.scripts]

@@ -21,6 +21,24 @@
   let selectedFiles = [];
   /** @type {any} */
   let lastReport = null;
+  let authRequired = false;
+
+  function apiHeaders(extra = {}) {
+    const h = { ...extra };
+    const tok = sessionStorage.getItem("smf_swarm_api_token") || "";
+    if (tok) h["X-API-Key"] = tok;
+    return h;
+  }
+
+  function ensureTokenIfNeeded() {
+    if (!authRequired) return true;
+    let tok = sessionStorage.getItem("smf_swarm_api_token") || "";
+    if (!tok) {
+      tok = window.prompt("This server requires SMF_SWARM_API_TOKEN. Enter API token:") || "";
+      if (tok) sessionStorage.setItem("smf_swarm_api_token", tok.trim());
+    }
+    return Boolean(sessionStorage.getItem("smf_swarm_api_token"));
+  }
 
   function toast(msg) {
     let el = document.querySelector(".toast");
@@ -87,7 +105,8 @@
   fetch("/api/health")
     .then((r) => r.json())
     .then((j) => {
-      healthPill.textContent = `online · ${j.version || ""}`.trim();
+      authRequired = Boolean(j.auth_required);
+      healthPill.textContent = `online · ${j.version || ""}`.trim() + (authRequired ? " · auth" : "");
       healthPill.classList.add("ok");
     })
     .catch(() => {
@@ -97,7 +116,16 @@
 
   async function loadHistory() {
     try {
-      const r = await fetch("/api/history?limit=12");
+      if (authRequired && !ensureTokenIfNeeded()) {
+        historyList.innerHTML = `<li class="muted">Auth required for history</li>`;
+        return;
+      }
+      const r = await fetch("/api/history?limit=12", { headers: apiHeaders() });
+      if (r.status === 401) {
+        sessionStorage.removeItem("smf_swarm_api_token");
+        historyList.innerHTML = `<li class="muted">Unauthorized — set API token</li>`;
+        return;
+      }
       const data = await r.json();
       const items = data.items || [];
       if (!items.length) {
@@ -113,7 +141,9 @@
           <div class="meta">${escapeHtml(it.run_id || "")} · ${escapeHtml(it.mode || "")} · ${conf}% · ${escapeHtml((it.created_at || "").slice(0, 19))}</div>
         `;
         li.addEventListener("click", async () => {
-          const res = await fetch(`/api/history/${encodeURIComponent(it.run_id)}`);
+          const res = await fetch(`/api/history/${encodeURIComponent(it.run_id)}`, {
+            headers: apiHeaders(),
+          });
           if (!res.ok) {
             toast("Could not load run");
             return;
@@ -135,6 +165,10 @@
     e.preventDefault();
     const q = question.value.trim();
     if (!q) return;
+    if (authRequired && !ensureTokenIfNeeded()) {
+      toast("API token required");
+      return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Running swarm…";
@@ -146,7 +180,11 @@
     selectedFiles.forEach((f) => fd.append("files", f, f.name));
 
     try {
-      const res = await fetch("/api/analyze", { method: "POST", body: fd });
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        body: fd,
+        headers: apiHeaders(),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.detail || res.statusText || "Request failed");
@@ -194,6 +232,18 @@
     URL.revokeObjectURL(a.href);
   });
 
+  document.getElementById("copyShare").addEventListener("click", async () => {
+    if (!lastReport) return;
+    const path = lastReport.share_url_path || lastReport.share_path || lastReport.signed_url_path;
+    if (!path) {
+      toast("No share link on this report");
+      return;
+    }
+    const url = new URL(path, window.location.origin).toString();
+    await navigator.clipboard.writeText(url);
+    toast("Share link copied");
+  });
+
   function renderReport(r) {
     lastReport = r;
     emptyPanel.hidden = true;
@@ -233,6 +283,23 @@
       )
       .join("");
 
+    const charts = (r.charts || [])
+      .map((c) => {
+        const stats = c.stats || {};
+        return `<div class="chart-card">
+          <div class="chart-title">${escapeHtml(c.filename || "")} · <strong>${escapeHtml(
+          c.name || "series"
+        )}</strong>
+          <span class="mono">n=${escapeHtml(String(stats.n ?? ""))} last=${escapeHtml(
+          String(stats.last ?? "")
+        )} Δ=${escapeHtml(String(stats.delta ?? ""))} (${escapeHtml(
+          Number(stats.delta_pct || 0).toFixed(1)
+        )}%)</span></div>
+          <div class="sparkline">${c.sparkline_svg || ""}</div>
+        </div>`;
+      })
+      .join("");
+
     const personas = (r.persona_views || [])
       .map((p) => {
         const findings = (p.findings || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
@@ -246,6 +313,7 @@
 
     const m = r.methodology || {};
     const files = (r.attachments_used || []).join(", ") || "none";
+    const sharePath = r.share_url_path || r.share_path || "";
 
     resultBody.innerHTML = `
       <div class="card">
@@ -258,6 +326,11 @@
         <h3>Executive summary</h3>
         <p>${escapeHtml(r.executive_summary || "")}</p>
       </div>
+      ${
+        charts
+          ? `<div class="card"><h3>Charts</h3>${charts}</div>`
+          : ""
+      }
       <div class="card">
         <h3>Key drivers</h3>
         <ul>${drivers || "<li>None listed</li>"}</ul>
@@ -298,10 +371,17 @@
         </ul>
       </div>
       <div class="card">
-        <h3>Governance</h3>
+        <h3>Share & governance</h3>
         <p class="mono">agent=${escapeHtml(r.agent_id || "")} · audit_events=${
       r.audit_events ?? "?"
     } · chain_valid=${r.chain_valid}</p>
+        ${
+          sharePath
+            ? `<p style="margin-top:0.45rem">Share path: <span class="mono">${escapeHtml(
+                sharePath
+              )}</span></p>`
+            : ""
+        }
         <p style="margin-top:0.5rem;color:var(--muted);font-size:0.88rem">${escapeHtml(
           r.disclaimer || ""
         )}</p>
