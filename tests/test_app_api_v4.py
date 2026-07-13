@@ -72,4 +72,4 @@ def test_auth_allows_with_token(auth_client):
 def test_health_reports_auth_flag(auth_client):
     h = auth_client.get("/api/health")
     assert h.json()["auth_required"] is True
-    assert h.json()["version"].startswith("0.4")
+    assert h.json()["version"].startswith("0.5")

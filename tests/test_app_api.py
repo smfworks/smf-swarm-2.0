@@ -17,7 +17,7 @@ def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
-    assert r.json()["version"].startswith("0.4")
+    assert r.json()["version"].startswith("0.5")
 
 
 def test_index(client):

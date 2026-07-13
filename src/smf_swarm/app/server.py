@@ -28,7 +28,7 @@ from smf_swarm.app.history import RunHistory
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_FILES = 8
 MAX_FILE_BYTES = 5 * 1024 * 1024
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.5.0"
 
 
 def create_app() -> FastAPI:

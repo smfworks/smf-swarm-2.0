@@ -48,4 +48,4 @@ def test_llm_test_requires_url(client):
 def test_health_includes_llm_defaults(client):
     h = client.get("/api/health")
     assert "llm_defaults" in h.json()
-    assert h.json()["version"].startswith("0.4")
+    assert h.json()["version"].startswith("0.5")

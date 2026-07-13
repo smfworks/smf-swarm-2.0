@@ -4,116 +4,138 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SMF Swarm — Predictive Analysis</title>
+  <meta name="description" content="Governance-first multi-persona predictive analysis" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <div class="bg-glow" aria-hidden="true"></div>
-  <header class="top">
+  <div class="noise" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+
+  <header class="shell top">
     <div class="brand">
-      <div class="logo" aria-hidden="true">◎</div>
-      <div>
+      <div class="logo" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="7.25" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="9" cy="9" r="2.5" fill="currentColor"/>
+          <path d="M9 1.8v2.2M9 14v2.2M1.8 9h2.2M14 9h2.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-copy">
         <div class="brand-name">SMF Swarm</div>
-        <div class="brand-tag">Governance-first predictive analysis</div>
+        <div class="brand-tag">Predictive analysis · multi-persona</div>
       </div>
     </div>
     <div class="top-meta">
       <span class="pill" id="healthPill">checking…</span>
-      <span class="pill muted">v0.4.1</span>
-            <button type="button" class="btn ghost" id="openSettings" title="LLM endpoint settings">Settings</button>
-          </div>
-        </header>
+      <span class="pill muted">v0.5</span>
+      <button type="button" class="btn ghost sm" id="openSettings">Settings</button>
+    </div>
+  </header>
 
-        <div id="settingsModal" class="modal" hidden>
-          <div class="modal-card">
-            <div class="modal-head">
-              <h2>Settings</h2>
-              <button type="button" class="btn ghost" id="closeSettings">Close</button>
-            </div>
-            <p class="lede" style="margin-bottom:0.75rem">
-              Configure the LLM endpoint for <strong>LLM swarm</strong> mode. Saved in this browser only (not sent until you run analysis or test).
-            </p>
-            <label class="label" for="llmBaseUrl">Base URL</label>
-            <input id="llmBaseUrl" type="url" placeholder="http://spark-56bc:8888/v1 or https://api.openai.com/v1" />
-            <label class="label" for="llmModel">Model</label>
-            <input id="llmModel" type="text" placeholder="unsloth/Qwen3.6-35B-A3B-NVFP4" />
-            <label class="label" for="llmApiKey">API key (optional)</label>
-            <input id="llmApiKey" type="password" placeholder="sk-… (leave blank if not required)" autocomplete="off" />
-            <p class="hint" id="settingsHint" style="margin-top:0.5rem"></p>
-            <div class="export-row" style="margin-top:1rem">
-              <button type="button" class="btn ghost" id="testLlm">Test connection</button>
-              <button type="button" class="btn primary" id="saveSettings" style="width:auto;margin:0">Save</button>
-              <button type="button" class="btn ghost" id="clearSettings">Clear</button>
-            </div>
-            <p class="mono" id="testLlmResult" style="margin-top:0.75rem"></p>
-          </div>
+  <div id="settingsModal" class="modal" hidden>
+    <div class="modal-card glass">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Configuration</div>
+          <h2>LLM endpoint</h2>
         </div>
+        <button type="button" class="btn ghost sm" id="closeSettings">Close</button>
+      </div>
+      <p class="lede compact">
+        Used for <strong>LLM swarm</strong> mode. Saved in this browser only.
+      </p>
+      <label class="label" for="llmBaseUrl">Base URL</label>
+      <input id="llmBaseUrl" type="url" placeholder="http://host:port/v1" />
+      <label class="label" for="llmModel">Model</label>
+      <input id="llmModel" type="text" placeholder="model-id" />
+      <label class="label" for="llmApiKey">API key <span class="opt">(optional)</span></label>
+      <input id="llmApiKey" type="password" placeholder="sk-…" autocomplete="off" />
+      <p class="hint" id="settingsHint"></p>
+      <div class="btn-row">
+        <button type="button" class="btn ghost" id="testLlm">Test connection</button>
+        <button type="button" class="btn ghost" id="clearSettings">Clear</button>
+        <button type="button" class="btn primary" id="saveSettings">Save</button>
+      </div>
+      <p class="mono status-line" id="testLlmResult"></p>
+    </div>
+  </div>
 
-  <main class="layout">
-    <section class="panel input-panel">
+  <main class="shell layout">
+    <section class="panel glass input-panel">
+      <div class="eyebrow">New analysis</div>
       <h1>Ask. Attach. Predict.</h1>
       <p class="lede">
-        Submit a decision or forecasting question and optional data files.
-        A multi-persona swarm produces a structured predictive analysis — with evidence and audit trail.
+        Pose a decision question, attach evidence, and run a governed multi-persona swarm.
       </p>
 
-      <form id="analyzeForm">
-        <label class="label" for="question">Your question</label>
-        <textarea
-          id="question"
-          name="question"
-          rows="5"
-          required
-          spellcheck="false"
-          placeholder="e.g. Given this pipeline of opportunities and recent conversion rates, what is the most likely Q3 revenue range and what risks could break the base case?"
-        ></textarea>
+      <form id="analyzeForm" class="stack">
+        <div class="field">
+          <label class="label" for="question">Question</label>
+          <textarea
+            id="question"
+            name="question"
+            rows="5"
+            required
+            spellcheck="false"
+            placeholder="What is the base-case outlook, and which risks could break it?"
+          ></textarea>
+        </div>
 
-        <div class="row">
-          <div class="field">
-            <label class="label" for="mode">Analysis mode</label>
+        <div class="field">
+          <label class="label" for="mode">Mode</label>
+          <div class="select-wrap">
             <select id="mode" name="mode">
-              <option value="mock" selected>Offline swarm (mock — no API key)</option>
-              <option value="llm">LLM swarm (requires endpoint env)</option>
+              <option value="mock" selected>Offline swarm — fast, no API key</option>
+              <option value="llm">LLM swarm — uses Settings endpoint</option>
             </select>
           </div>
         </div>
 
-        <label class="label">Attach data</label>
-        <div id="dropzone" class="dropzone" tabindex="0">
-          <input type="file" id="files" name="files" multiple accept=".csv,.json,.txt,.md,.log" />
-          <div class="drop-inner">
-            <strong>Drop files here</strong> or click to browse
-            <div class="hint">CSV, JSON, TXT, MD · up to 8 files · 5MB each</div>
+        <div class="field">
+          <label class="label">Evidence files</label>
+          <div id="dropzone" class="dropzone" tabindex="0">
+            <input type="file" id="files" name="files" multiple accept=".csv,.json,.txt,.md,.log" />
+            <div class="drop-inner">
+              <div class="drop-icon" aria-hidden="true">⇪</div>
+              <div><strong>Drop files</strong> or click to browse</div>
+              <div class="hint">CSV · JSON · TXT · MD · up to 8 files · 5MB each</div>
+            </div>
           </div>
+          <ul id="fileList" class="file-list"></ul>
         </div>
-        <ul id="fileList" class="file-list"></ul>
 
-        <button type="submit" class="btn primary" id="submitBtn">
+        <button type="submit" class="btn primary block" id="submitBtn">
           Run swarm analysis
         </button>
         <div id="loadingBar" class="loading-bar" hidden>
-          <div class="loading-bar-inner"></div>
-          <span>Running multi-persona swarm…</span>
+          <div class="loading-track"><div class="loading-bar-inner"></div></div>
+          <span>Running Scout · Strategist · Skeptic · Forecaster…</span>
         </div>
       </form>
 
       <div class="history-block">
         <div class="history-head">
-          <h2>Recent runs</h2>
-          <button type="button" class="btn ghost" id="refreshHistory">Refresh</button>
+          <div>
+            <div class="eyebrow">Library</div>
+            <h2>Recent runs</h2>
+          </div>
+          <button type="button" class="btn ghost sm" id="refreshHistory">Refresh</button>
         </div>
         <ul id="historyList" class="history-list">
-          <li class="muted">No runs yet</li>
+          <li class="muted empty-hist">No runs yet</li>
         </ul>
       </div>
     </section>
 
-    <section class="panel result-panel" id="resultPanel" hidden>
+    <section class="panel glass result-panel" id="resultPanel" hidden>
       <div class="result-header">
         <div>
-          <h2>Analysis report</h2>
+          <div class="eyebrow">Report</div>
+          <h2>Analysis</h2>
           <div class="mono" id="runMeta"></div>
         </div>
         <div class="result-badges">
@@ -122,25 +144,32 @@
         </div>
       </div>
       <div class="export-row">
-        <button type="button" class="btn ghost" id="copyJson">Copy JSON</button>
-        <button type="button" class="btn ghost" id="copyMd">Copy Markdown</button>
-        <button type="button" class="btn ghost" id="downloadMd">Download .md</button>
-        <button type="button" class="btn ghost" id="copyShare">Copy share link</button>
+        <button type="button" class="btn ghost sm" id="copyJson">Copy JSON</button>
+        <button type="button" class="btn ghost sm" id="copyMd">Copy Markdown</button>
+        <button type="button" class="btn ghost sm" id="downloadMd">Download .md</button>
+        <button type="button" class="btn ghost sm" id="copyShare">Copy share link</button>
       </div>
-      <div id="resultBody"></div>
+      <div id="resultBody" class="result-body"></div>
     </section>
 
-    <section class="panel empty-panel" id="emptyPanel">
+    <section class="panel glass empty-panel" id="emptyPanel">
       <div class="empty">
-        <div class="empty-icon">◈</div>
-        <h2>Results appear here</h2>
-        <p>Your swarm report will include prediction, confidence, scenarios, evidence, risks, and recommended actions.</p>
+        <div class="empty-ring" aria-hidden="true">
+          <div class="empty-icon">◈</div>
+        </div>
+        <h2>Awaiting your first run</h2>
+        <p>
+          Reports appear here with prediction, confidence, scenarios, evidence, charts, and actions —
+          the kind of brief you’d actually show a decision-maker.
+        </p>
       </div>
     </section>
   </main>
 
-  <footer class="foot">
-    <span>SMF Works · Agent-installable package · Not professional advice</span>
+  <footer class="shell foot">
+    <span>SMF Works</span>
+    <span class="dot">·</span>
+    <span>Not professional advice</span>
   </footer>
 
   <script src="/static/app.js"></script>
