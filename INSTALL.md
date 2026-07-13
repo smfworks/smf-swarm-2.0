@@ -1,22 +1,30 @@
-# Install SMF Swarm (end users & agents)
+# Install SMF Swarm (download & use)
 
-## Requirements
+## What you need
 
 - Python **3.10+**
 - macOS / Linux / Windows
+- ~50MB free for a venv + package
 
-## Quick install (from Git)
+## Download
 
 ```bash
 git clone https://github.com/smfworks/smf-swarm-2.0.git
 cd smf-swarm-2.0
+```
+
+(Private repo: use credentials that can access `smfworks/smf-swarm-2.0`.)
+
+## Install
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -U pip
 pip install -e ".[app]"
 ```
 
-## Launch the app
+## Use the product UI
 
 ```bash
 smf-swarm serve --host 127.0.0.1 --port 8787
@@ -24,30 +32,32 @@ smf-swarm serve --host 127.0.0.1 --port 8787
 
 Open **http://127.0.0.1:8787**
 
-- Ask a question  
-- Attach CSV/JSON/TXT/MD  
-- Get predictive analysis + charts (CSV) + export/share  
+1. Type a decision question  
+2. Optional: attach CSV / JSON / TXT / MD (try `fixtures/sample_growth.csv`)  
+3. Mode: **Offline swarm** first (no key); or **LLM swarm** after Settings  
+4. **Run swarm analysis**  
+5. Export / copy share link / reopen from Recent runs  
 
-## Headless (agents / automation)
+### LLM Settings (in the browser)
 
-```bash
-smf-swarm analyze \
-  -q "What is the near-term outlook?" \
-  -d ./data.csv \
-  --mode mock \
-  -o report.json
-```
-
-## Settings UI (browser)
-
-Click **Settings** in the app header:
+Click **Settings** (top right):
 
 1. Base URL (e.g. `http://spark-56bc:8888/v1`)  
 2. Model id  
 3. Optional API key  
-4. **Save** (localStorage) or **Test connection**
+4. **Save** or **Test connection**
 
-These override env vars for that browser session when running LLM mode.
+Settings are stored in browser localStorage and override env vars for that browser.
+
+## Use from the terminal (agents / scripts)
+
+```bash
+smf-swarm analyze \
+  -q "What is the near-term outlook?" \
+  -d fixtures/sample_growth.csv \
+  --mode mock \
+  -o report.json
+```
 
 ## Optional environment
 
@@ -77,7 +87,7 @@ curl -s http://127.0.0.1:8787/api/health
 
 ## PyPI note
 
-Private repo today. When publishing publicly:
+Private Git install today. When publishing publicly:
 
 ```bash
 pip install build twine
@@ -93,6 +103,7 @@ Package name: **`smf-swarm`**. Entry point: **`smf-swarm`**.
 |-------|-----|
 | `smf-swarm: command not found` | Activate venv; `pip install -e ".[app]"` |
 | Port in use | `smf-swarm serve --port 8790` |
-| LLM mode fails | Check URL/model; app falls back to mock and labels it |
+| LLM mode fails | Settings → Test connection; app can fall back to mock |
 | Charts missing | Use CSV with ≥3 numeric rows |
 | 401 Unauthorized | Set matching `SMF_SWARM_API_TOKEN` / UI prompt |
+| Git clone denied | Need access to private `smfworks/smf-swarm-2.0` |
