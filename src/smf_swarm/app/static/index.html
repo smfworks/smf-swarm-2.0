@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SMF Swarm — Predictive Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">◎</div>
+      <div>
+        <div class="brand-name">SMF Swarm</div>
+        <div class="brand-tag">Governance-first predictive analysis</div>
+      </div>
+    </div>
+    <div class="top-meta">
+      <span class="pill" id="healthPill">checking…</span>
+      <span class="pill muted">v0.2</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel input-panel">
+      <h1>Ask. Attach. Predict.</h1>
+      <p class="lede">
+        Submit a decision or forecasting question and optional data files.
+        A multi-persona swarm produces a structured predictive analysis — with audit trail.
+      </p>
+
+      <form id="analyzeForm">
+        <label class="label" for="question">Your question</label>
+        <textarea
+          id="question"
+          name="question"
+          rows="5"
+          required
+          placeholder="e.g. Given this pipeline of opportunities and recent conversion rates, what is the most likely Q3 revenue range and what risks could break the base case?"
+        ></textarea>
+
+        <div class="row">
+          <div class="field">
+            <label class="label" for="mode">Analysis mode</label>
+            <select id="mode" name="mode">
+              <option value="mock" selected>Offline swarm (mock — no API key)</option>
+              <option value="llm">LLM swarm (requires endpoint env)</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="label">Attach data</label>
+        <div id="dropzone" class="dropzone" tabindex="0">
+          <input type="file" id="files" name="files" multiple accept=".csv,.json,.txt,.md,.log" />
+          <div class="drop-inner">
+            <strong>Drop files here</strong> or click to browse
+            <div class="hint">CSV, JSON, TXT, MD · up to 8 files · 5MB each</div>
+          </div>
+        </div>
+        <ul id="fileList" class="file-list"></ul>
+
+        <button type="submit" class="btn primary" id="submitBtn">
+          Run swarm analysis
+        </button>
+      </form>
+    </section>
+
+    <section class="panel result-panel" id="resultPanel" hidden>
+      <div class="result-header">
+        <h2>Analysis report</h2>
+        <div class="result-badges">
+          <span class="pill" id="modeBadge"></span>
+          <span class="pill accent" id="confBadge"></span>
+        </div>
+      </div>
+      <div id="resultBody"></div>
+    </section>
+
+    <section class="panel empty-panel" id="emptyPanel">
+      <div class="empty">
+        <div class="empty-icon">◈</div>
+        <h2>Results appear here</h2>
+        <p>Your swarm report will include prediction, confidence, scenarios, risks, and recommended actions.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>SMF Works · Agent-installable package · Not professional advice</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

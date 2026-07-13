@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smf-swarm"
-version = "0.1.0"
-description = "SMF Swarm 2.0 — governance-first agent swarm platform (Phase 1 foundation)"
+version = "0.2.0"
+description = "SMF Swarm — governance-first predictive analysis app (downloadable package + UI)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -16,13 +16,29 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["httpx>=0.27"]
-dev = ["pytest>=7.0", "httpx>=0.27"]
+app = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "python-multipart>=0.0.9",
+  "httpx>=0.27",
+]
+dev = [
+  "pytest>=7.0",
+  "httpx>=0.27",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "python-multipart>=0.0.9",
+]
 
 [project.scripts]
+smf-swarm = "smf_swarm.cli:main"
 smf-swarm-diagnose = "smf_swarm.pipeline.phase1_run:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+smf_swarm = ["app/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

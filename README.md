@@ -1,112 +1,101 @@
-# SMF Swarm 2.0
+# SMF Swarm
 
-**Governance-first agent swarm platform** — Phase 1 foundation (complete for first run).
+**Governance-first predictive analysis application** — downloadable package for humans and AI agents.
 
 | | |
 |--|--|
-| Version | 0.1.0 |
-| Phase | **1 complete** — Capability Diagnostic + Governance Hooks |
-| Owner | Aiona Edge (SMF Works) |
+| Version | **0.2.0** |
+| Product | Standalone app (UI + CLI) + Phase 1 platform library |
 | Repo | https://github.com/smfworks/smf-swarm-2.0 (private) |
-| Status | Dual-path diagnostic locked (mock = CI, LLM = production insight) |
 
-## What Phase 1 delivered
+## What you get
 
-1. **Capability Diagnostic** (TRACE-inspired) — mock backend + optional OpenAI-compatible LLM backend  
-2. **Governance hooks** — identity registry, hash-chained audit log, permission engine (deny-by-default)  
-3. **Minimal pipeline** — register agent → grant `capability.diagnose` → run diagnosis → audit  
-4. **Dogfood** — SkillOpt-style edit-planning trajectories  
-5. **Mock vs LLM comparison** on DGX Spark (`Qwen3.6-35B-A3B-NVFP4`)
+1. **Stylish web UI** — ask a question, attach CSV/JSON/TXT/MD, get a predictive analysis report  
+2. **Multi-persona swarm** — Scout · Strategist · Skeptic · Forecaster  
+3. **Governance** — identity + hash-chained audit on every analysis run  
+4. **Agent-friendly CLI** — install and run like SkillOpt-style tool packages  
+5. **Phase 1 library** — capability diagnostic + hooks (SkillOpt consumer, etc.)
 
-**Not in Phase 1:** HBHC crypto revocation, topology engine, Council deliberation, multi-tenant RBAC.
-
-## Docs (keep in lockstep with code)
-
-| Document | Purpose |
-|----------|---------|
-| [`docs/PHASE1_DOD.md`](docs/PHASE1_DOD.md) | Locked scope + success criteria (checked) |
-| [`docs/PHASE1_STATUS.md`](docs/PHASE1_STATUS.md) | Living status, commits, next options |
-| [`docs/DOGFOOD.md`](docs/DOGFOOD.md) | First dogfood run findings |
-| [`docs/MOCK_VS_LLM.md`](docs/MOCK_VS_LLM.md) | Mock vs LLM diagnostic comparison |
-| [`docs/CONSUMER_SKILLOPT.md`](docs/CONSUMER_SKILLOPT.md) | First consumer: SkillOpt → Phase1Pipeline |
-| [`docs/DOGFOOD_SKILLOPT_OFFLINE.md`](docs/DOGFOOD_SKILLOPT_OFFLINE.md) | Offline SkillOpt consumer dogfood (PASS) |
-| [`docs/adr/0001-governance-first-foundation.md`](docs/adr/0001-governance-first-foundation.md) | Architecture decision |
-
-Full platform vision (seven layers) lives in the internal architecture specification; this repo is the **Phase 1 implementation**.
-
-## Install
+## Install (humans or agents)
 
 ```bash
+git clone https://github.com/smfworks/smf-swarm-2.0.git
 cd smf-swarm-2.0
 python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[app]"
+```
+
+### Start the UI
+
+```bash
+smf-swarm serve --host 127.0.0.1 --port 8787
+# open http://127.0.0.1:8787
+```
+
+### Headless analysis (agent / automation)
+
+```bash
+smf-swarm analyze \
+  --question "What is the base-case outlook and top risks?" \
+  --data ./sample.csv \
+  --mode mock \
+  --output report.json
+```
+
+### Capability diagnostic (Phase 1 library)
+
+```bash
+smf-swarm diagnose --fixture fixtures/skillopt_edit_planning_trajectories.json
+```
+
+## Analysis modes
+
+| Mode | When | Needs |
+|------|------|--------|
+| `mock` (default) | Offline demos, CI, air-gapped | Nothing |
+| `llm` | Richer synthesis | `SMF_SWARM_LLM_BASE_URL`, model; optional `SMF_SWARM_LLM_API_KEY` |
+
+```bash
+export SMF_SWARM_LLM_BASE_URL=http://spark-56bc:8888/v1
+export SMF_SWARM_LLM_MODEL=unsloth/Qwen3.6-35B-A3B-NVFP4
+smf-swarm analyze -q "..." --mode llm
+```
+
+## UI flow
+
+1. Enter a predictive / decision question  
+2. Optional: drop data files  
+3. Choose Offline swarm or LLM swarm  
+4. Read report: prediction, confidence, scenarios, risks, actions, persona views, audit status  
+
+## Library (still available)
+
+Phase 1 platform APIs remain under `smf_swarm.governance`, `smf_swarm.capability`, `smf_swarm.pipeline`.  
+See `docs/PHASE1_STATUS.md`, `docs/CONSUMER_SKILLOPT.md`.
+
+## Docs
+
+| Doc | Purpose |
+|-----|---------|
+| [`docs/PRODUCT_APP_v0.2.md`](docs/PRODUCT_APP_v0.2.md) | Product scope for standalone app |
+| [`docs/PHASE1_DOD.md`](docs/PHASE1_DOD.md) | Phase 1 foundation DoD |
+| [`docs/PHASE1_STATUS.md`](docs/PHASE1_STATUS.md) | Living status |
+| [`docs/CONSUMER_SKILLOPT.md`](docs/CONSUMER_SKILLOPT.md) | SkillOpt consumer |
+| [`docs/MOCK_VS_LLM.md`](docs/MOCK_VS_LLM.md) | Diagnostic dual-path policy |
+
+## Tests
+
+```bash
 pip install -e ".[dev]"
-# optional LLM client
-pip install -e ".[llm]"
 pytest -q
 ```
 
-## Quick start
+## Agent notes
 
-```bash
-# Offline mock diagnosis (no network)
-python -m smf_swarm.pipeline.phase1_run --domain article_editing
-
-# SkillOpt-style fixture
-python -m smf_swarm.pipeline.phase1_run \
-  --fixture fixtures/skillopt_edit_planning_trajectories.json \
-  --domain article_editing \
-  --audit /tmp/smf-swarm-audit.jsonl
-```
-
-```python
-from smf_swarm.pipeline import Phase1Pipeline
-
-pipe = Phase1Pipeline()
-agent_id = pipe.bootstrap_agent("research-agent")
-result = pipe.run_diagnosis(
-    agent_id,
-    successful=[{"content": "…good trajectory…"}],
-    failed=[{"content": "…failed trajectory…"}],
-    domain="article_editing",
-)
-assert result.chain_valid
-print(result.to_dict())
-```
-
-### Mock vs LLM comparison (requires DGX / OpenAI-compatible endpoint)
-
-```bash
-# Default script targets spark-56bc:8888 — edit BASE_URL/MODEL if needed
-python scripts/compare_mock_vs_llm.py
-# Writes data/mock_vs_llm_comparison.json (gitignored)
-```
-
-## Layout
-
-```
-src/smf_swarm/
-  governance/   identity, audit, permissions
-  capability/   diagnostic engine (mock + LLM)
-  pipeline/     phase1_run entrypoint
-docs/           DoD, status, dogfood, mock-vs-llm, ADRs
-fixtures/       SkillOpt-style trajectories
-scripts/        comparison runner
-tests/
-```
-
-## Diagnostic policy (locked)
-
-| Context | Backend |
-|---------|---------|
-| CI / unit tests | `MockCapabilityBackend` (deterministic) |
-| Production diagnosis | `LLMCapabilityBackend` when endpoint available |
-| SkillOpt criteria generation | Prefer LLM `suggested_criterion` text |
-
-## Verification
-
-```bash
-pytest -q   # expect 6 passed (offline)
-```
+- Prefer `smf-swarm serve` for interactive demos; `smf-swarm analyze` for automation.  
+- Default mode is **mock** (deterministic structure, no network).  
+- Treat outputs as **decision support**, not certified professional advice.  
+- Keep docs in lockstep with code when changing the app surface.
 
 ## License
 

@@ -52,6 +52,15 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 - Default: `diagnostic_backend=swarm`, `swarm_diagnostic_mode=mock`
 - Legacy in-tree diagnostic remains available
 
+## Product app v0.2 (2026-07-13)
+
+Standalone downloadable application shipped:
+
+- `smf-swarm serve` — stylish UI (question + attach data → predictive report)  
+- `smf-swarm analyze` — headless agent/automation CLI  
+- Multi-persona engine (Scout / Strategist / Skeptic / Forecaster)  
+- Docs: `PRODUCT_APP_v0.2.md`, root `AGENTS.md`  
+
 ## Offline consumer dogfood (2026-07-13)
 
 SkillOpt offline 2-epoch run with Swarm mock diagnostic: **PASS**  
