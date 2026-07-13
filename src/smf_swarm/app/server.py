@@ -28,7 +28,7 @@ from smf_swarm.app.history import RunHistory
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_FILES = 8
 MAX_FILE_BYTES = 5 * 1024 * 1024
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.4.1"
 
 
 def create_app() -> FastAPI:
@@ -57,57 +57,99 @@ def create_app() -> FastAPI:
             "version": APP_VERSION,
             "mode_default": os.environ.get("SMF_SWARM_MODE", "mock"),
             "auth_required": auth_enabled(),
+            "llm_defaults": {
+                "base_url": os.environ.get("SMF_SWARM_LLM_BASE_URL", ""),
+                "model": os.environ.get("SMF_SWARM_LLM_MODEL", ""),
+                "has_env_api_key": bool(os.environ.get("SMF_SWARM_LLM_API_KEY")),
+            },
         }
 
-    @app.get("/api/history")
-    def list_history(limit: int = 20, _auth: None = Depends(require_api_auth)):
-        return {"items": history.list(limit=min(limit, 50))}
+    @app.post("/api/llm/test")
+    async def llm_test(
+        base_url: str = Form(""),
+        model: str = Form(""),
+        api_key: str = Form(""),
+        _auth: None = Depends(require_api_auth),
+    ):
+        """Probe an OpenAI-compatible /models or minimal chat call."""
+        url = (base_url or os.environ.get("SMF_SWARM_LLM_BASE_URL") or "").strip().rstrip("/")
+        mdl = (model or os.environ.get("SMF_SWARM_LLM_MODEL") or "").strip()
+        key = (api_key or os.environ.get("SMF_SWARM_LLM_API_KEY") or "").strip()
+        if not url:
+            raise HTTPException(400, "base_url is required")
+        try:
+            import httpx
+        except ImportError as e:
+            raise HTTPException(500, "httpx not installed; pip install -e '.[app]'") from e
 
-    @app.get("/api/history/{run_id}")
-    def get_history(run_id: str, _auth: None = Depends(require_api_auth)):
-        rep = history.get(run_id)
-        if not rep:
-            raise HTTPException(404, "run not found")
-        return rep
-
-    @app.get("/api/history/{run_id}/export.md")
-    def export_markdown(run_id: str, _auth: None = Depends(require_api_auth)):
-        rep = history.get(run_id)
-        if not rep:
-            raise HTTPException(404, "run not found")
-        return PlainTextResponse(
-            _report_markdown(rep), media_type="text/markdown; charset=utf-8"
-        )
-
-    # Public shareable report (no API token)
-    @app.get("/api/share/{share_id}")
-    def api_share(share_id: str):
-        rep = history.get_by_share_id(share_id)
-        if not rep:
-            raise HTTPException(404, "shared report not found")
-        return rep
-
-    @app.get("/share/{share_id}", response_class=HTMLResponse)
-    def share_page(share_id: str):
-        rep = history.get_by_share_id(share_id)
-        if not rep:
-            raise HTTPException(404, "shared report not found")
-        return _share_html(rep)
-
-    @app.get("/r/{run_id}", response_class=HTMLResponse)
-    def signed_report_page(run_id: str, s: str = ""):
-        if not verify_run_signature(run_id, s):
-            raise HTTPException(403, "invalid or missing share signature")
-        rep = history.get(run_id)
-        if not rep:
-            raise HTTPException(404, "run not found")
-        return _share_html(rep)
+        headers = {"Content-Type": "application/json"}
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        try:
+            with httpx.Client(timeout=20.0) as client:
+                # Prefer models list (cheap)
+                r = client.get(f"{url}/models", headers=headers)
+                if r.status_code < 400:
+                    models = []
+                    try:
+                        data = r.json()
+                        models = [
+                            m.get("id") for m in (data.get("data") or []) if isinstance(m, dict)
+                        ][:12]
+                    except Exception:
+                        pass
+                    ok_model = (not mdl) or (mdl in models) or (not models)
+                    return {
+                        "ok": True,
+                        "endpoint": f"{url}/models",
+                        "status_code": r.status_code,
+                        "models_sample": models,
+                        "model_configured": mdl,
+                        "model_listed": (mdl in models) if models else None,
+                        "note": None
+                        if ok_model
+                        else "Configured model not in /models list (may still work)",
+                    }
+                # Fallback: tiny chat
+                if not mdl:
+                    raise HTTPException(
+                        400,
+                        f"/models returned {r.status_code}; set model for chat probe",
+                    )
+                body = {
+                    "model": mdl,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 8,
+                    "temperature": 0,
+                }
+                r2 = client.post(f"{url}/chat/completions", headers=headers, json=body)
+                if r2.status_code >= 400:
+                    raise HTTPException(
+                        502,
+                        f"LLM probe failed: models={r.status_code} chat={r2.status_code} {r2.text[:200]}",
+                    )
+                return {
+                    "ok": True,
+                    "endpoint": f"{url}/chat/completions",
+                    "status_code": r2.status_code,
+                    "models_sample": [],
+                    "model_configured": mdl,
+                    "model_listed": None,
+                    "note": "chat probe succeeded",
+                }
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(502, f"LLM connection failed: {e}") from e
 
     @app.post("/api/analyze")
     async def analyze(
         question: str = Form(...),
         mode: str = Form("mock"),
         files: Optional[List[UploadFile]] = File(None),
+        llm_base_url: str = Form(""),
+        llm_model: str = Form(""),
+        llm_api_key: str = Form(""),
         _auth: None = Depends(require_api_auth),
     ):
         q = (question or "").strip()
@@ -151,12 +193,35 @@ def create_app() -> FastAPI:
         audit_dir.mkdir(parents=True, exist_ok=True)
         audit_path = audit_dir / "app-audit.jsonl"
 
+        # Prefer per-request UI settings; fall back to process env
+        resolved_base = (
+            (llm_base_url or "").strip()
+            or os.environ.get("SMF_SWARM_LLM_BASE_URL")
+            or None
+        )
+        resolved_model = (
+            (llm_model or "").strip()
+            or os.environ.get("SMF_SWARM_LLM_MODEL")
+            or None
+        )
+        resolved_key = (
+            (llm_api_key or "").strip()
+            or os.environ.get("SMF_SWARM_LLM_API_KEY")
+            or ""
+        )
+
+        if mode == "llm" and not resolved_base:
+            raise HTTPException(
+                400,
+                "LLM mode requires a base URL (Settings → LLM endpoint, or SMF_SWARM_LLM_BASE_URL)",
+            )
+
         engine = PredictiveSwarmEngine(
             mode=mode,
             audit_path=audit_path,
-            llm_model=os.environ.get("SMF_SWARM_LLM_MODEL"),
-            llm_base_url=os.environ.get("SMF_SWARM_LLM_BASE_URL"),
-            llm_api_key=os.environ.get("SMF_SWARM_LLM_API_KEY", ""),
+            llm_model=resolved_model,
+            llm_base_url=resolved_base,
+            llm_api_key=resolved_key,
         )
         try:
             report = engine.run(q, attachments)
@@ -176,6 +241,49 @@ def create_app() -> FastAPI:
         except Exception:
             pass
         return payload
+
+    @app.get("/api/history")
+    def list_history(limit: int = 20, _auth: None = Depends(require_api_auth)):
+        return {"items": history.list(limit=min(limit, 50))}
+
+    @app.get("/api/history/{run_id}")
+    def get_history(run_id: str, _auth: None = Depends(require_api_auth)):
+        rep = history.get(run_id)
+        if not rep:
+            raise HTTPException(404, "run not found")
+        return rep
+
+    @app.get("/api/history/{run_id}/export.md")
+    def export_markdown(run_id: str, _auth: None = Depends(require_api_auth)):
+        rep = history.get(run_id)
+        if not rep:
+            raise HTTPException(404, "run not found")
+        return PlainTextResponse(
+            _report_markdown(rep), media_type="text/markdown; charset=utf-8"
+        )
+
+    @app.get("/api/share/{share_id}")
+    def api_share(share_id: str):
+        rep = history.get_by_share_id(share_id)
+        if not rep:
+            raise HTTPException(404, "shared report not found")
+        return rep
+
+    @app.get("/share/{share_id}", response_class=HTMLResponse)
+    def share_page(share_id: str):
+        rep = history.get_by_share_id(share_id)
+        if not rep:
+            raise HTTPException(404, "shared report not found")
+        return _share_html(rep)
+
+    @app.get("/r/{run_id}", response_class=HTMLResponse)
+    def signed_report_page(run_id: str, s: str = ""):
+        if not verify_run_signature(run_id, s):
+            raise HTTPException(403, "invalid or missing share signature")
+        rep = history.get(run_id)
+        if not rep:
+            raise HTTPException(404, "run not found")
+        return _share_html(rep)
 
     return app
 

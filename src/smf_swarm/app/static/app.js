@@ -23,6 +23,95 @@
   let lastReport = null;
   let authRequired = false;
 
+  const SETTINGS_KEY = "smf_swarm_llm_settings";
+
+  function loadLlmSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveLlmSettings(obj) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj || {}));
+  }
+
+  function applySettingsToForm() {
+    const s = loadLlmSettings();
+    const base = document.getElementById("llmBaseUrl");
+    const model = document.getElementById("llmModel");
+    const key = document.getElementById("llmApiKey");
+    if (base) base.value = s.base_url || "";
+    if (model) model.value = s.model || "";
+    if (key) key.value = s.api_key || "";
+  }
+
+  function readSettingsFromForm() {
+    return {
+      base_url: (document.getElementById("llmBaseUrl")?.value || "").trim(),
+      model: (document.getElementById("llmModel")?.value || "").trim(),
+      api_key: (document.getElementById("llmApiKey")?.value || "").trim(),
+    };
+  }
+
+  function openSettings() {
+    applySettingsToForm();
+    document.getElementById("testLlmResult").textContent = "";
+    document.getElementById("settingsModal").hidden = false;
+  }
+
+  function closeSettings() {
+    document.getElementById("settingsModal").hidden = true;
+  }
+
+  document.getElementById("openSettings")?.addEventListener("click", openSettings);
+  document.getElementById("closeSettings")?.addEventListener("click", closeSettings);
+  document.getElementById("settingsModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "settingsModal") closeSettings();
+  });
+  document.getElementById("saveSettings")?.addEventListener("click", () => {
+    saveLlmSettings(readSettingsFromForm());
+    toast("Settings saved in this browser");
+    closeSettings();
+  });
+  document.getElementById("clearSettings")?.addEventListener("click", () => {
+    localStorage.removeItem(SETTINGS_KEY);
+    applySettingsToForm();
+    document.getElementById("llmBaseUrl").value = "";
+    document.getElementById("llmModel").value = "";
+    document.getElementById("llmApiKey").value = "";
+    toast("Settings cleared");
+  });
+  document.getElementById("testLlm")?.addEventListener("click", async () => {
+    if (authRequired && !ensureTokenIfNeeded()) {
+      toast("API token required");
+      return;
+    }
+    const s = readSettingsFromForm();
+    const fd = new FormData();
+    fd.append("base_url", s.base_url);
+    fd.append("model", s.model);
+    fd.append("api_key", s.api_key);
+    const el = document.getElementById("testLlmResult");
+    el.textContent = "Testing…";
+    try {
+      const res = await fetch("/api/llm/test", {
+        method: "POST",
+        body: fd,
+        headers: apiHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      el.textContent = `OK · ${data.endpoint} · status ${data.status_code}` +
+        (data.models_sample?.length ? ` · models: ${data.models_sample.slice(0, 5).join(", ")}` : "") +
+        (data.note ? ` · ${data.note}` : "");
+      toast("Connection OK");
+    } catch (err) {
+      el.textContent = `Failed: ${err.message || err}`;
+    }
+  });
+
   function apiHeaders(extra = {}) {
     const h = { ...extra };
     const tok = sessionStorage.getItem("smf_swarm_api_token") || "";
@@ -108,6 +197,18 @@
       authRequired = Boolean(j.auth_required);
       healthPill.textContent = `online · ${j.version || ""}`.trim() + (authRequired ? " · auth" : "");
       healthPill.classList.add("ok");
+      // Prefill empty settings from server env defaults (not the API key)
+      const s = loadLlmSettings();
+      const defs = j.llm_defaults || {};
+      if (!s.base_url && defs.base_url) s.base_url = defs.base_url;
+      if (!s.model && defs.model) s.model = defs.model;
+      saveLlmSettings(s);
+      const hint = document.getElementById("settingsHint");
+      if (hint) {
+        hint.textContent = defs.has_env_api_key
+          ? "Server has SMF_SWARM_LLM_API_KEY in env (used if browser key left blank)."
+          : "Tip: set Base URL + Model here, or export SMF_SWARM_LLM_* before serve.";
+      }
     })
     .catch(() => {
       healthPill.textContent = "offline";
@@ -177,7 +278,20 @@
     const fd = new FormData();
     fd.append("question", q);
     fd.append("mode", mode.value);
+    const llm = loadLlmSettings();
+    if (llm.base_url) fd.append("llm_base_url", llm.base_url);
+    if (llm.model) fd.append("llm_model", llm.model);
+    if (llm.api_key) fd.append("llm_api_key", llm.api_key);
     selectedFiles.forEach((f) => fd.append("files", f, f.name));
+
+    if (mode.value === "llm" && !llm.base_url) {
+      toast("Open Settings and set LLM Base URL");
+      openSettings();
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Run swarm analysis";
+      loadingBar.hidden = true;
+      return;
+    }
 
     try {
       const res = await fetch("/api/analyze", {

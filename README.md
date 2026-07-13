@@ -28,7 +28,21 @@ pip install -e ".[app]"
 smf-swarm serve --host 127.0.0.1 --port 8787
 ```
 
-### Auth & share (v0.4)
+## Settings (v0.4.1)
+
+In the web UI click **Settings** (top right):
+
+| Field | Purpose |
+|-------|---------|
+| Base URL | OpenAI-compatible endpoint, e.g. `http://spark-56bc:8888/v1` |
+| Model | Model id |
+| API key | Optional; blank uses server env if set |
+
+Saved in **browser localStorage**. Sent only on **Run** (LLM mode) or **Test connection**.
+
+Env vars (`SMF_SWARM_LLM_*`) still work as server-side defaults when Settings fields are empty.
+
+## Auth & share (v0.4)
 
 - Optional: `export SMF_SWARM_API_TOKEN=...` to lock analyze/history  
 - Every run gets a public share page at `/share/{share_id}` (Copy share link in UI)  

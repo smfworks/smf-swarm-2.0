@@ -38,6 +38,17 @@ smf-swarm analyze \
   -o report.json
 ```
 
+## Settings UI (browser)
+
+Click **Settings** in the app header:
+
+1. Base URL (e.g. `http://spark-56bc:8888/v1`)  
+2. Model id  
+3. Optional API key  
+4. **Save** (localStorage) or **Test connection**
+
+These override env vars for that browser session when running LLM mode.
+
 ## Optional environment
 
 | Variable | Purpose |

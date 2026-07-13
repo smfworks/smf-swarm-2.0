@@ -21,9 +21,35 @@
     </div>
     <div class="top-meta">
       <span class="pill" id="healthPill">checking…</span>
-      <span class="pill muted">v0.3</span>
-    </div>
-  </header>
+      <span class="pill muted">v0.4.1</span>
+            <button type="button" class="btn ghost" id="openSettings" title="LLM endpoint settings">Settings</button>
+          </div>
+        </header>
+
+        <div id="settingsModal" class="modal" hidden>
+          <div class="modal-card">
+            <div class="modal-head">
+              <h2>Settings</h2>
+              <button type="button" class="btn ghost" id="closeSettings">Close</button>
+            </div>
+            <p class="lede" style="margin-bottom:0.75rem">
+              Configure the LLM endpoint for <strong>LLM swarm</strong> mode. Saved in this browser only (not sent until you run analysis or test).
+            </p>
+            <label class="label" for="llmBaseUrl">Base URL</label>
+            <input id="llmBaseUrl" type="url" placeholder="http://spark-56bc:8888/v1 or https://api.openai.com/v1" />
+            <label class="label" for="llmModel">Model</label>
+            <input id="llmModel" type="text" placeholder="unsloth/Qwen3.6-35B-A3B-NVFP4" />
+            <label class="label" for="llmApiKey">API key (optional)</label>
+            <input id="llmApiKey" type="password" placeholder="sk-… (leave blank if not required)" autocomplete="off" />
+            <p class="hint" id="settingsHint" style="margin-top:0.5rem"></p>
+            <div class="export-row" style="margin-top:1rem">
+              <button type="button" class="btn ghost" id="testLlm">Test connection</button>
+              <button type="button" class="btn primary" id="saveSettings" style="width:auto;margin:0">Save</button>
+              <button type="button" class="btn ghost" id="clearSettings">Clear</button>
+            </div>
+            <p class="mono" id="testLlmResult" style="margin-top:0.75rem"></p>
+          </div>
+        </div>
 
   <main class="layout">
     <section class="panel input-panel">
