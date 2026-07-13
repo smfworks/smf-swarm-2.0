@@ -52,6 +52,11 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 - Default: `diagnostic_backend=swarm`, `swarm_diagnostic_mode=mock`
 - Legacy in-tree diagnostic remains available
 
+## Offline consumer dogfood (2026-07-13)
+
+SkillOpt offline 2-epoch run with Swarm mock diagnostic: **PASS**  
+(`docs/DOGFOOD_SKILLOPT_OFFLINE.md`)
+
 ## Next options (not started)
 
 1. Export a **real** SkillOpt epoch trajectory dump and re-run comparison  
