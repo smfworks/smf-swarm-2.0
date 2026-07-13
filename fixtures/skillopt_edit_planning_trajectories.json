@@ -1,0 +1,23 @@
+{
+  "domain": "article_editing",
+  "source": "SkillOpt edit_planning skill criteria + prototype progress notes (anonymized trajectories)",
+  "successful": [
+    {
+      "content": "Triage selected 2 high-impact hypotheses: (1) strengthen opening claim with evidence, (2) reorder argument structure. Rejected formatting-only changes as low rubric impact. Risks: dependency of claim edits on structure reorder — execute reorder first. Edit plan: Section 1 replace vague claim X with specific claim Y + citation; Section 3 move counterargument before conclusion. Each step names original span and new text. Executable by another editor without follow-up."
+    },
+    {
+      "content": "Prioritized conceptual clarity over breadth. Three hypotheses ranked by expected score lift. Explicit risk: over-editing intro may break voice consistency. Rejection rationale for 'add more examples': article already example-heavy. Plan lists ordered steps with section anchors and acceptance checks per edit."
+    }
+  ],
+  "failed": [
+    {
+      "content": "Selected 6 hypotheses including minor formatting, typography, and optional sidebar ideas. No ranking by impact. No risk analysis. Rejection reasons missing for dropped items. Edit plan vague: 'improve intro' and 'fix clarity' without original/new text spans. Non-executable without follow-up questions."
+    },
+    {
+      "content": "Tried to fix everything at once. Hypothesis list mixes high-impact argument gaps with low-impact wording nits. No dependency ordering. Plan was vague and non-executable; steps like 'make it stronger' and 'add depth' without criteria. Unsupported claims about reader impact with no evidence grounding."
+    },
+    {
+      "content": "Included low-impact formatting changes while missing core argument weaknesses. Too many hypotheses, no ruthless prioritization. Risk section absent. Edit items lack section specificity and original text to replace."
+    }
+  ]
+}

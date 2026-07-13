@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smf-swarm"
+version = "0.1.0"
+description = "SMF Swarm 2.0 — governance-first agent swarm platform (Phase 1 foundation)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "SMF Works" }]
+dependencies = [
+  "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+llm = ["httpx>=0.27"]
+dev = ["pytest>=7.0", "httpx>=0.27"]
+
+[project.scripts]
+smf-swarm-diagnose = "smf_swarm.pipeline.phase1_run:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
