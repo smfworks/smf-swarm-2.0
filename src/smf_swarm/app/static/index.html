@@ -21,7 +21,7 @@
     </div>
     <div class="top-meta">
       <span class="pill" id="healthPill">checking…</span>
-      <span class="pill muted">v0.2</span>
+      <span class="pill muted">v0.3</span>
     </div>
   </header>
 
@@ -30,7 +30,7 @@
       <h1>Ask. Attach. Predict.</h1>
       <p class="lede">
         Submit a decision or forecasting question and optional data files.
-        A multi-persona swarm produces a structured predictive analysis — with audit trail.
+        A multi-persona swarm produces a structured predictive analysis — with evidence and audit trail.
       </p>
 
       <form id="analyzeForm">
@@ -40,6 +40,7 @@
           name="question"
           rows="5"
           required
+          spellcheck="false"
           placeholder="e.g. Given this pipeline of opportunities and recent conversion rates, what is the most likely Q3 revenue range and what risks could break the base case?"
         ></textarea>
 
@@ -66,16 +67,38 @@
         <button type="submit" class="btn primary" id="submitBtn">
           Run swarm analysis
         </button>
+        <div id="loadingBar" class="loading-bar" hidden>
+          <div class="loading-bar-inner"></div>
+          <span>Running multi-persona swarm…</span>
+        </div>
       </form>
+
+      <div class="history-block">
+        <div class="history-head">
+          <h2>Recent runs</h2>
+          <button type="button" class="btn ghost" id="refreshHistory">Refresh</button>
+        </div>
+        <ul id="historyList" class="history-list">
+          <li class="muted">No runs yet</li>
+        </ul>
+      </div>
     </section>
 
     <section class="panel result-panel" id="resultPanel" hidden>
       <div class="result-header">
-        <h2>Analysis report</h2>
+        <div>
+          <h2>Analysis report</h2>
+          <div class="mono" id="runMeta"></div>
+        </div>
         <div class="result-badges">
           <span class="pill" id="modeBadge"></span>
           <span class="pill accent" id="confBadge"></span>
         </div>
+      </div>
+      <div class="export-row">
+        <button type="button" class="btn ghost" id="copyJson">Copy JSON</button>
+        <button type="button" class="btn ghost" id="copyMd">Copy Markdown</button>
+        <button type="button" class="btn ghost" id="downloadMd">Download .md</button>
       </div>
       <div id="resultBody"></div>
     </section>
@@ -84,7 +107,7 @@
       <div class="empty">
         <div class="empty-icon">◈</div>
         <h2>Results appear here</h2>
-        <p>Your swarm report will include prediction, confidence, scenarios, risks, and recommended actions.</p>
+        <p>Your swarm report will include prediction, confidence, scenarios, evidence, risks, and recommended actions.</p>
       </div>
     </section>
   </main>

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smf-swarm"
-version = "0.2.0"
-description = "SMF Swarm — governance-first predictive analysis app (downloadable package + UI)"
+version = "0.3.0"
+description = "SMF Swarm — governance-first predictive analysis app (UI + CLI + history/export)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

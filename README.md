@@ -4,8 +4,8 @@
 
 | | |
 |--|--|
-| Version | **0.2.0** |
-| Product | Standalone app (UI + CLI) + Phase 1 platform library |
+| Version | **0.3.0** |
+| Product | Standalone app (UI + CLI + history/export) + Phase 1 library |
 | Repo | https://github.com/smfworks/smf-swarm-2.0 (private) |
 
 ## What you get
