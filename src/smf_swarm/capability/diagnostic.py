@@ -183,12 +183,23 @@ def _parse_gaps(content: str, max_capabilities: int) -> List[CapabilityGap]:
     data = json.loads(raw)
     gaps: List[CapabilityGap] = []
     for item in data[:max_capabilities]:
+        if not isinstance(item, dict):
+            continue
+        cov_raw = item.get("failure_coverage", 0.0)
+        try:
+            cov = float(cov_raw)
+        except (TypeError, ValueError):
+            # Models sometimes return prose instead of a float
+            m = re.search(r"0?\.\d+|1(?:\.0+)?", str(cov_raw))
+            cov = float(m.group(0)) if m else 0.0
         gaps.append(
             CapabilityGap(
                 name=str(item.get("name", "Unknown")),
                 description=str(item.get("description", "")),
-                failure_coverage=float(item.get("failure_coverage", 0.0)),
-                evidence=list(item.get("evidence") or []),
+                failure_coverage=cov,
+                evidence=[str(x) for x in (item.get("evidence") or [])]
+                if isinstance(item.get("evidence"), list)
+                else [str(item.get("evidence") or "")],
                 suggested_criterion=str(item.get("suggested_criterion", "")),
             )
         )
