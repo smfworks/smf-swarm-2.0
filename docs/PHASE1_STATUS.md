@@ -44,6 +44,14 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 - Topology engine / Council / multi-tenant RBAC  
 - Public PyPI / replace smf-swarm v1 product surface  
 
+## First consumer (2026-07-13)
+
+**SkillOpt** (`skillopt-prototype` v0.14) calls `Phase1Pipeline` via `swarm_diagnostic_adapter.py`.
+
+- Design: [`CONSUMER_SKILLOPT.md`](CONSUMER_SKILLOPT.md)
+- Default: `diagnostic_backend=swarm`, `swarm_diagnostic_mode=mock`
+- Legacy in-tree diagnostic remains available
+
 ## Next options (not started)
 
 1. Export a **real** SkillOpt epoch trajectory dump and re-run comparison  

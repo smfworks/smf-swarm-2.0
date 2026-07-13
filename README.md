@@ -28,7 +28,7 @@
 | [`docs/PHASE1_STATUS.md`](docs/PHASE1_STATUS.md) | Living status, commits, next options |
 | [`docs/DOGFOOD.md`](docs/DOGFOOD.md) | First dogfood run findings |
 | [`docs/MOCK_VS_LLM.md`](docs/MOCK_VS_LLM.md) | Mock vs LLM diagnostic comparison |
-| [`docs/adr/0001-governance-first-foundation.md`](docs/adr/0001-governance-first-foundation.md) | Architecture decision |
+| [`docs/CONSUMER_SKILLOPT.md`](docs/CONSUMER_SKILLOPT.md) | First consumer: SkillOpt → Phase1Pipeline |
 
 Full platform vision (seven layers) lives in the internal architecture specification; this repo is the **Phase 1 implementation**.
 
