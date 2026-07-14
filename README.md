@@ -15,7 +15,8 @@
 | **Version** | **0.5.0** |
 | **Package** | `smf-swarm` |
 | **Repo** | https://github.com/smfworks/smf-swarm-2.0 |
-| **License** | MIT |
+| **License** | MIT (open source) |
+| **Role** | **Platform core** — public. Commercial verticals (e.g. Forensic Engineering) live in **private** repos such as [`smf-swarm-2.0-fe`](https://github.com/smfworks/smf-swarm-2.0-fe). |
 
 ---
 
