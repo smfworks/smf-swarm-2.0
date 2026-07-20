@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set
+from typing import Dict, Set
 
 from .audit import AuditLog
 from .identity import IdentityRegistry

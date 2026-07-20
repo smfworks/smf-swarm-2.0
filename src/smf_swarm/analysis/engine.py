@@ -79,32 +79,32 @@ class PredictiveReport:
 
     def to_markdown(self) -> str:
         lines = [
-            f"# SMF Swarm Analysis Report",
-            f"",
+            "# SMF Swarm Analysis Report",
+            "",
             f"**Run:** `{self.run_id}`  ",
             f"**When:** {self.created_at}  ",
             f"**Mode:** {self.mode}"
-            + (f" (fallback from LLM)" if self.fallback_used else "")
+            + (" (fallback from LLM)" if self.fallback_used else "")
             + "  ",
             f"**Confidence:** {self.confidence:.0%}  ",
             f"**Horizon:** {self.time_horizon}  ",
-            f"",
-            f"## Question",
-            f"",
+            "",
+            "## Question",
+            "",
             self.question,
-            f"",
-            f"## Prediction",
-            f"",
+            "",
+            "## Prediction",
+            "",
             f"**{self.prediction_headline or self.prediction}**",
-            f"",
+            "",
             self.prediction_detail or self.prediction,
-            f"",
-            f"## Executive summary",
-            f"",
+            "",
+            "## Executive summary",
+            "",
             self.executive_summary,
-            f"",
-            f"## Key drivers",
-            f"",
+            "",
+            "## Key drivers",
+            "",
         ]
         for d in self.key_drivers:
             lines.append(f"- {d}")
@@ -415,7 +415,7 @@ class MockPredictiveBackend:
             PersonaView(
                 persona="Strategist",
                 role="Scenario design",
-                findings=[s["name"] + ": " + s["narrative"][:120] for s in scenarios],
+                findings=[str(s["name"]) + ": " + str(s["narrative"])[:120] for s in scenarios],
                 confidence=conf * 0.9,
             ),
             PersonaView(
@@ -537,8 +537,8 @@ def _parse_llm_report(content: str) -> Dict[str, Any]:
             data, _ = json.JSONDecoder().raw_decode(text[i:])
             if isinstance(data, dict):
                 break
-        except json.JSONDecodeError as e:
-            last_err = e
+        except json.JSONDecodeError as exc:
+            last_err = exc
             continue
     if not isinstance(data, dict):
         raise ValueError(f"no JSON object in LLM response: {last_err}")
@@ -638,6 +638,7 @@ class PredictiveSwarmEngine:
         self.llm_model = llm_model or "unsloth/Qwen3.6-35B-A3B-NVFP4"
         self.llm_base_url = llm_base_url or "http://spark-56bc:8888/v1"
         self.fallback_used = False
+        self.backend: "LLMPredictiveBackend | MockPredictiveBackend"
 
         self.identities = IdentityRegistry()
         self.audit = AuditLog(path=audit_path)

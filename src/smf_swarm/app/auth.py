@@ -7,7 +7,7 @@ import os
 import secrets
 from typing import Optional
 
-from fastapi import Header, HTTPException, Query, Request
+from fastapi import Header, HTTPException
 
 
 def api_token() -> str:

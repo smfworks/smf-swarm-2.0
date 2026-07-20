@@ -52,7 +52,6 @@ def extract_series_from_csv(
     series_out: List[ChartSeries] = []
 
     # Prefer first column as labels if non-numeric
-    label_col = 0
     label_vals = [_parse_float(r[0]) if r else None for r in body]
     labels_are_numeric = sum(1 for v in label_vals if v is not None) >= max(2, len(body) // 2)
 

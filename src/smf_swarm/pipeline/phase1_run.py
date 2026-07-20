@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -12,7 +12,6 @@ from smf_swarm.capability import CapabilityDiagnostic, CapabilityGap, MockCapabi
 from smf_swarm.governance import (
     AuditLog,
     IdentityRegistry,
-    PermissionDenied,
     PermissionEngine,
 )
 
