@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
+
+
+def normalize_base_url(base_url: str) -> str:
+    """Reject URL userinfo so endpoint credentials cannot leak into artifacts."""
+
+    parsed = urlsplit(base_url)
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include credentials")
+    return base_url.rstrip("/")
+
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -21,8 +33,35 @@ from smf_swarm.capability.diagnostic import (  # noqa: E402
 FIXTURE = ROOT / "fixtures" / "skillopt_edit_planning_trajectories.json"
 OUT = ROOT / "data" / "mock_vs_llm_comparison.json"
 RAW = ROOT / "data" / "llm_raw_response.txt"
-BASE_URL = "http://spark-56bc:8888/v1"
-MODEL = "unsloth/Qwen3.6-35B-A3B-NVFP4"
+BASE_URL = normalize_base_url(
+    os.environ.get("SMF_SWARM_EVAL_BASE_URL", "http://spark-56bc:8888/v1")
+)
+MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "").strip()
+
+
+def resolve_model(client: httpx.Client, base_url: str, configured_model: str) -> str:
+    """Use an explicit model or discover the endpoint's sole served model."""
+
+    if configured_model:
+        return configured_model
+    response = client.get(f"{base_url.rstrip('/')}/models")
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        raise RuntimeError("model endpoint returned an invalid response")
+    models: list[str] = []
+    for item in payload["data"]:
+        if not isinstance(item, dict):
+            raise RuntimeError("model endpoint returned an invalid response")
+        model_id = item.get("id")
+        if not isinstance(model_id, str) or not model_id.strip():
+            raise RuntimeError("model endpoint returned an invalid response")
+        models.append(model_id.strip())
+    if len(models) != 1:
+        raise RuntimeError(
+            "expected exactly one served model; set SMF_SWARM_EVAL_MODEL explicitly"
+        )
+    return models[0]
 
 
 def parse_gaps(text: str, n: int = 6) -> list[CapabilityGap]:
@@ -118,21 +157,22 @@ def main() -> int:
         "name, description, failure_coverage, evidence, suggested_criterion. "
         "Keep each field short. JSON only."
     )
-    body = {
-        "model": MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Reply with a JSON array only. Exactly 3 concise items.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.1,
-        "max_tokens": 2500,
-    }
+    with httpx.Client(timeout=180.0, trust_env=False) as client:
+        model = resolve_model(client, BASE_URL, MODEL)
+        body = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Reply with a JSON array only. Exactly 3 concise items.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 2500,
+        }
 
-    print("Calling LLM on DGX Spark...", flush=True)
-    with httpx.Client(timeout=180.0) as client:
+        print(f"Calling LLM on DGX Spark (model={model})...", flush=True)
         r = client.post(f"{BASE_URL}/chat/completions", json=body)
         r.raise_for_status()
         payload = r.json()
@@ -140,6 +180,7 @@ def main() -> int:
     content = msg.get("content") or ""
     reasoning = msg.get("reasoning") or ""
     raw = content.strip() if content and str(content).strip() else (reasoning or "")
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     RAW.write_text(raw if raw else json.dumps(msg, default=str), encoding="utf-8")
     finish = payload["choices"][0].get("finish_reason")
     print(
@@ -169,7 +210,7 @@ def main() -> int:
     report = {
         "fixture": str(FIXTURE),
         "domain": domain,
-        "model": MODEL,
+        "model": model,
         "base_url": BASE_URL,
         "finish_reason": finish,
         "mock": {"n_gaps": len(mock_gaps), "gaps": [row(g) for g in mock_gaps]},
@@ -185,7 +226,6 @@ def main() -> int:
         "llm_themes": sorted(llm_t),
         "recommendation": rec,
     }
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
     print("=== VERDICT ===")

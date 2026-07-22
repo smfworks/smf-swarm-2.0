@@ -77,8 +77,14 @@ Names do not match string-for-string; **themes strongly align**. LLM adds depend
 
 ```bash
 pip install -e ".[llm]"
-# Edit BASE_URL / MODEL in scripts/compare_mock_vs_llm.py if needed
+# The runner auto-discovers the endpoint's sole served model.
 python scripts/compare_mock_vs_llm.py
+# For another endpoint or one that serves multiple models, set explicit overrides:
+SMF_SWARM_EVAL_BASE_URL=http://127.0.0.1:8000/v1 \
+  SMF_SWARM_EVAL_MODEL=your-model python scripts/compare_mock_vs_llm.py
 ```
+
+The runner rejects endpoint URLs containing username/password userinfo so credentials
+cannot be copied into the JSON artifact or console output. Use a credential-free URL.
 
 **Verdict:** Dual-path diagnostic strategy confirmed. Mock for gates; LLM for insight.
