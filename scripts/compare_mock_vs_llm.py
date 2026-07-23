@@ -3,22 +3,60 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
+import unicodedata
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
 
-def normalize_base_url(base_url: str) -> str:
-    """Reject URL userinfo so endpoint credentials cannot leak into artifacts."""
+MAX_MODEL_ID_LENGTH = 256
+_REQUIRED_GAP_FIELDS = frozenset(
+    {
+        "name",
+        "description",
+        "failure_coverage",
+        "evidence",
+        "suggested_criterion",
+    }
+)
 
+
+def _contains_control_characters(value: str) -> bool:
+    """Detect terminal, line, separator, and Unicode formatting characters."""
+
+    return any(
+        unicodedata.category(char) in {"Cc", "Cf", "Zl", "Zp"} for char in value
+    )
+
+
+def normalize_base_url(base_url: str) -> str:
+    """Return a canonical endpoint URL with no output-tainting metadata."""
+
+    if _contains_control_characters(base_url):
+        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include control characters")
+    if base_url != base_url.strip():
+        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include surrounding whitespace")
     parsed = urlsplit(base_url)
     if parsed.username is not None or parsed.password is not None:
         raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include credentials")
-    return base_url.rstrip("/")
+    if "?" in base_url or "#" in base_url:
+        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include a query or fragment")
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("SMF_SWARM_EVAL_BASE_URL must be an absolute HTTP(S) URL")
+    try:
+        parsed.port
+    except ValueError:
+        raise ValueError(
+            "SMF_SWARM_EVAL_BASE_URL must be an absolute HTTP(S) URL"
+        ) from None
+    return urlunsplit(
+        (parsed.scheme.lower(), parsed.netloc, parsed.path.rstrip("/"), "", "")
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,13 +74,20 @@ RAW = ROOT / "data" / "llm_raw_response.txt"
 BASE_URL = normalize_base_url(
     os.environ.get("SMF_SWARM_EVAL_BASE_URL", "http://spark-56bc:8888/v1")
 )
-MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "").strip()
+MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "")
 
 
 def resolve_model(client: httpx.Client, base_url: str, configured_model: str) -> str:
-    """Use an explicit model or discover the endpoint's sole served model."""
+    """Use a validated explicit model or discover the endpoint's sole model."""
 
+    if _contains_control_characters(configured_model):
+        raise ValueError("SMF_SWARM_EVAL_MODEL must not include control characters")
+    configured_model = configured_model.strip()
     if configured_model:
+        if len(configured_model) > MAX_MODEL_ID_LENGTH:
+            raise ValueError(
+                f"SMF_SWARM_EVAL_MODEL must be at most {MAX_MODEL_ID_LENGTH} characters"
+            )
         return configured_model
     response = client.get(f"{base_url.rstrip('/')}/models")
     response.raise_for_status()
@@ -54,14 +99,59 @@ def resolve_model(client: httpx.Client, base_url: str, configured_model: str) ->
         if not isinstance(item, dict):
             raise RuntimeError("model endpoint returned an invalid response")
         model_id = item.get("id")
-        if not isinstance(model_id, str) or not model_id.strip():
+        if not isinstance(model_id, str):
             raise RuntimeError("model endpoint returned an invalid response")
-        models.append(model_id.strip())
+        if _contains_control_characters(model_id):
+            raise RuntimeError("model endpoint returned an invalid response")
+        model_id = model_id.strip()
+        if not model_id or len(model_id) > MAX_MODEL_ID_LENGTH:
+            raise RuntimeError("model endpoint returned an invalid response")
+        models.append(model_id)
     if len(models) != 1:
         raise RuntimeError(
             "expected exactly one served model; set SMF_SWARM_EVAL_MODEL explicitly"
         )
     return models[0]
+
+
+def _is_valid_gap_item(item: object) -> bool:
+    if not isinstance(item, dict) or set(item) != _REQUIRED_GAP_FIELDS:
+        return False
+    for field in ("name", "description", "suggested_criterion"):
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return False
+    evidence = item.get("evidence")
+    if not isinstance(evidence, list) or not all(
+        isinstance(entry, str) for entry in evidence
+    ):
+        return False
+    return True
+
+
+def _strict_gap_response_is_valid(text: str) -> bool:
+    """Require one complete JSON array of three structurally valid gap objects."""
+
+    candidate = re.sub(r"<think>[\s\S]*?</think>", "", text or "", flags=re.I).strip()
+    try:
+        data = json.loads(candidate)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    if not isinstance(data, list) or len(data) != 3:
+        return False
+    for item in data:
+        if not _is_valid_gap_item(item):
+            return False
+        coverage = item.get("failure_coverage")
+        coverage_value = float(coverage) if isinstance(coverage, (int, float)) else 0.0
+        if (
+            isinstance(coverage, bool)
+            or not isinstance(coverage, (int, float))
+            or not math.isfinite(coverage_value)
+            or not 0.0 <= coverage_value <= 1.0
+        ):
+            return False
+    return True
 
 
 def parse_gaps(text: str, n: int = 6) -> list[CapabilityGap]:
@@ -76,7 +166,7 @@ def parse_gaps(text: str, n: int = 6) -> list[CapabilityGap]:
             continue
         if isinstance(data, list):
             for item in data:
-                if isinstance(item, dict) and item.get("name"):
+                if _is_valid_gap_item(item):
                     try:
                         cov = float(item.get("failure_coverage") or 0)
                     except (TypeError, ValueError):
@@ -98,7 +188,7 @@ def parse_gaps(text: str, n: int = 6) -> list[CapabilityGap]:
             item = json.loads(m.group(0))
         except json.JSONDecodeError:
             continue
-        if isinstance(item, dict) and item.get("name"):
+        if _is_valid_gap_item(item):
             try:
                 cov = float(item.get("failure_coverage") or 0)
             except (TypeError, ValueError):
@@ -172,7 +262,7 @@ def main() -> int:
             "max_tokens": 2500,
         }
 
-        print(f"Calling LLM on DGX Spark (model={model})...", flush=True)
+        print(f"Calling LLM on DGX Spark (model={model!r})...", flush=True)
         r = client.post(f"{BASE_URL}/chat/completions", json=body)
         r.raise_for_status()
         payload = r.json()
@@ -189,12 +279,18 @@ def main() -> int:
     )
 
     llm_gaps = parse_gaps(raw)
+    gap_names = {gap.name.strip().casefold() for gap in llm_gaps}
+    llm_result_valid = (
+        _strict_gap_response_is_valid(raw)
+        and len(llm_gaps) == 3
+        and len(gap_names) == 3
+    )
     mock_t = set(themes(mock_gaps))
     llm_t = set(themes(llm_gaps))
     # avoid shell-sensitive & in shell wrappers; pure python set intersection
     overlap = sorted(mock_t.intersection(llm_t))
 
-    if llm_gaps:
+    if llm_result_valid:
         rec = (
             "Use mock for offline CI/unit tests. "
             "Use LLM for production diagnosis when DGX/OpenAI-compatible endpoint is available. "
@@ -203,8 +299,8 @@ def main() -> int:
         )
     else:
         rec = (
-            "LLM returned no parseable gaps this run — keep mock as CI default; "
-            "inspect data/llm_raw_response.txt."
+            "LLM result must contain exactly three distinct valid gaps — keep mock as "
+            "the CI default and inspect data/llm_raw_response.txt."
         )
 
     report = {
@@ -215,7 +311,11 @@ def main() -> int:
         "finish_reason": finish,
         "mock": {"n_gaps": len(mock_gaps), "gaps": [row(g) for g in mock_gaps]},
         "llm": {
-            "error": None if llm_gaps else "no_gaps_parsed",
+            "error": (
+                None
+                if llm_result_valid
+                else "expected_exactly_three_distinct_valid_gaps"
+            ),
             "n_gaps": len(llm_gaps),
             "gaps": [row(g) for g in llm_gaps],
             "raw_preview": (raw or "")[:2000],
@@ -230,7 +330,7 @@ def main() -> int:
     print(json.dumps(report, indent=2))
     print("=== VERDICT ===")
     print(rec)
-    return 0 if llm_gaps else 1
+    return 0 if llm_result_valid else 1
 
 
 if __name__ == "__main__":

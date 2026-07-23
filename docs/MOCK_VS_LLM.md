@@ -84,7 +84,12 @@ SMF_SWARM_EVAL_BASE_URL=http://127.0.0.1:8000/v1 \
   SMF_SWARM_EVAL_MODEL=your-model python scripts/compare_mock_vs_llm.py
 ```
 
-The runner rejects endpoint URLs containing username/password userinfo so credentials
-cannot be copied into the JSON artifact or console output. Use a credential-free URL.
+The runner accepts only absolute HTTP(S) endpoint URLs and rejects username/password
+userinfo, query strings, fragments, surrounding whitespace, and control characters so
+credentials and terminal-control sequences cannot reach requests, JSON artifacts, or
+console output. Explicit and discovered model IDs are limited to 256 characters and
+reject control or formatting characters. A live run succeeds only when the endpoint
+returns exactly three distinct, structurally valid gaps; every other cardinality or
+malformed result is recorded and exits nonzero.
 
 **Verdict:** Dual-path diagnostic strategy confirmed. Mock for gates; LLM for insight.
