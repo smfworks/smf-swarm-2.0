@@ -5,6 +5,7 @@ breaker fixes. Do not weaken these assertions to match incomplete hardening.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import threading
@@ -102,10 +103,17 @@ def test_eval_base_url_has_no_implicit_runtime_default():
     assert not DEFAULT_EVAL_BASE_URL
 
 
+def _load_compare_module():
+    path = Path(__file__).resolve().parents[1] / "scripts" / "compare_mock_vs_llm.py"
+    spec = importlib.util.spec_from_file_location("compare_mock_vs_llm", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_eval_harness_requires_explicit_base_url(monkeypatch):
     monkeypatch.delenv("SMF_SWARM_EVAL_BASE_URL", raising=False)
-    from tests.test_compare_mock_vs_llm_script import _load_compare_module
-
     module = _load_compare_module()
     with pytest.raises(ValueError, match="SMF_SWARM_EVAL_BASE_URL"):
         module.configured_eval_base_url()
@@ -113,8 +121,6 @@ def test_eval_harness_requires_explicit_base_url(monkeypatch):
 
 def test_eval_harness_does_not_bind_default_at_import(monkeypatch):
     monkeypatch.delenv("SMF_SWARM_EVAL_BASE_URL", raising=False)
-    from tests.test_compare_mock_vs_llm_script import _load_compare_module
-
     module = _load_compare_module()
     assert getattr(module, "BASE_URL", "") in {"", None}
 
