@@ -160,6 +160,8 @@ Env fallbacks still work:
 
 ```bash
 pip install -e ".[dev]"
+ruff check src tests
+mypy src
 pytest -q
 smf-swarm analyze -q "Smoke test" -d fixtures/sample_growth.csv --mode mock
 curl -s http://127.0.0.1:8787/api/health
@@ -172,6 +174,9 @@ curl -s http://127.0.0.1:8787/api/health
 | Doc | Purpose |
 |-----|---------|
 | **[INSTALL.md](INSTALL.md)** | End-user download, run, Settings, troubleshooting |
+| **[SECURITY.md](SECURITY.md)** | Threat model, env checklist, residual risks |
+| **[CHANGELOG.md](CHANGELOG.md)** | Release notes |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Tests, docs lockstep, commits |
 | **[AGENTS.md](AGENTS.md)** | Agent install / operate notes |
 | [`docs/PRODUCT_APP_v0.5.md`](docs/PRODUCT_APP_v0.5.md) | UI polish release notes |
 | [`docs/PRODUCT_APP_v0.4.1.md`](docs/PRODUCT_APP_v0.4.1.md) | Settings UI |

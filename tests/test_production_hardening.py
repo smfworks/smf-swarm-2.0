@@ -1,5 +1,6 @@
 """Fail-closed share signing, URL policy, and upload hygiene."""
 
+import os
 
 import pytest
 
@@ -111,6 +112,7 @@ def test_upload_strips_path(client):
     assert all(".." not in str(name) for name in used)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="mode bits are POSIX-only")
 def test_history_posix_perms(tmp_path):
     from smf_swarm.app.history import RunHistory
 

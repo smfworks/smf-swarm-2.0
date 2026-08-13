@@ -106,4 +106,4 @@ Package name: **`smf-swarm`**. Entry point: **`smf-swarm`**.
 | LLM mode fails | Settings → Test connection; app can fall back to mock |
 | Charts missing | Use CSV with ≥3 numeric rows |
 | 401 Unauthorized | Set matching `SMF_SWARM_API_TOKEN` / UI prompt |
-|| Git clone denied | Check GitHub access to public `smfworks/smf-swarm-2.0` |
+| Git clone denied | Check GitHub access to public `smfworks/smf-swarm-2.0` |
