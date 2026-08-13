@@ -24,11 +24,14 @@ from smf_swarm.app.auth import (
     verify_run_signature,
 )
 from smf_swarm.app.history import RunHistory
+from smf_swarm.app.llm_url import validate_llm_base_url
+from smf_swarm.logutil import get_logger, safe_url_for_log
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_FILES = 8
 MAX_FILE_BYTES = 5 * 1024 * 1024
 APP_VERSION = "0.5.0"
+_log = get_logger("smf_swarm.app")
 
 
 def create_app() -> FastAPI:
@@ -78,6 +81,10 @@ def create_app() -> FastAPI:
         if not url:
             raise HTTPException(400, "base_url is required")
         try:
+            url = validate_llm_base_url(url)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        try:
             import httpx
         except ImportError as e:
             raise HTTPException(500, "httpx not installed; pip install -e '.[app]'") from e
@@ -86,7 +93,9 @@ def create_app() -> FastAPI:
         if key:
             headers["Authorization"] = f"Bearer {key}"
         try:
-            with httpx.Client(timeout=20.0) as client:
+            with httpx.Client(
+                timeout=20.0, trust_env=False, follow_redirects=False
+            ) as client:
                 # Prefer models list (cheap)
                 r = client.get(f"{url}/models", headers=headers)
                 if r.status_code < 400:
@@ -150,6 +159,7 @@ def create_app() -> FastAPI:
         llm_base_url: str = Form(""),
         llm_model: str = Form(""),
         llm_api_key: str = Form(""),
+        fallback: str = Form("auto"),
         _auth: None = Depends(require_api_auth),
     ):
         q = (question or "").strip()
@@ -215,13 +225,30 @@ def create_app() -> FastAPI:
                 400,
                 "LLM mode requires a base URL (Settings → LLM endpoint, or SMF_SWARM_LLM_BASE_URL)",
             )
+        if mode == "llm" and resolved_base:
+            try:
+                resolved_base = validate_llm_base_url(resolved_base)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
 
+        allow_fallback = (fallback or "auto").strip().lower() != "never"
+        if os.environ.get("SMF_SWARM_FALLBACK", "").strip().lower() == "never":
+            allow_fallback = False
+
+        _log.info(
+            "analyze start mode=%s attachments=%s question_len=%s llm=%s",
+            mode,
+            len(attachments),
+            len(q),
+            safe_url_for_log(resolved_base or ""),
+        )
         engine = PredictiveSwarmEngine(
             mode=mode,
             audit_path=audit_path,
             llm_model=resolved_model,
             llm_base_url=resolved_base,
             llm_api_key=resolved_key,
+            allow_fallback=allow_fallback,
         )
         try:
             report = engine.run(q, attachments)
@@ -236,10 +263,22 @@ def create_app() -> FastAPI:
         payload["markdown"] = report.to_markdown()
         payload["share_url_path"] = report.share_path
         payload["signed_url_path"] = f"/r/{report.run_id}?s={sig}"
+        history_persisted = True
         try:
             history.append(payload)
         except Exception:
-            pass
+            history_persisted = False
+            _log.exception("history write failed for run_id=%s", report.run_id)
+            if os.environ.get("SMF_SWARM_STRICT", "").strip() in {"1", "true", "yes"}:
+                raise HTTPException(500, "failed to persist run history") from None
+        payload["history_persisted"] = history_persisted
+        _log.info(
+            "analyze end run_id=%s mode=%s fallback=%s history_persisted=%s",
+            report.run_id,
+            report.mode,
+            report.fallback_used,
+            history_persisted,
+        )
         return payload
 
     @app.get("/api/history")

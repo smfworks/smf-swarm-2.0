@@ -50,6 +50,7 @@ def test_analyze_mock_and_history(client):
     assert body["markdown"]
     assert body["chain_valid"] is True
     assert body["mode"] == "mock"
+    assert body["history_persisted"] is True
 
     h = client.get("/api/history")
     assert h.status_code == 200

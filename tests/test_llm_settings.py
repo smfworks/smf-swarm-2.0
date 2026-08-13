@@ -49,3 +49,26 @@ def test_health_includes_llm_defaults(client):
     h = client.get("/api/health")
     assert "llm_defaults" in h.json()
     assert h.json()["version"].startswith("0.5")
+
+
+def test_llm_test_rejects_file_url(client):
+    r = client.post("/api/llm/test", data={"base_url": "file:///etc/passwd"})
+    assert r.status_code == 400
+
+
+def test_llm_test_rejects_metadata_ip(client):
+    r = client.post("/api/llm/test", data={"base_url": "http://169.254.169.254/"})
+    assert r.status_code == 400
+
+
+def test_analyze_llm_rejects_credentialed_url(client):
+    r = client.post(
+        "/api/analyze",
+        data={
+            "question": "Will SSRF be blocked?",
+            "mode": "llm",
+            "llm_base_url": "http://user:pass@127.0.0.1:8000/v1",
+        },
+    )
+    assert r.status_code == 400
+    assert "credential" in r.json()["detail"].lower()

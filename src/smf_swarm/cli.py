@@ -10,8 +10,17 @@ from pathlib import Path
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
+    from smf_swarm.app.auth import require_share_secret_for_bind
+    from smf_swarm.logutil import get_logger
+
     host = args.host
     port = args.port
+    try:
+        require_share_secret_for_bind(host)
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    get_logger("smf_swarm.cli").info("Starting UI on %s:%s", host, port)
     print(f"SMF Swarm UI → http://{host}:{port}")
     print("  POST /api/analyze  |  GET /api/health")
     uvicorn.run(
@@ -42,6 +51,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     attachments = []
     for p in args.data or []:
         path = Path(p)
+        if not path.is_file():
+            print(f"error: data file not found: {path}", file=sys.stderr)
+            return 2
         raw = path.read_bytes()
         text = extract_text_from_bytes(path.name, raw)
         charts = extract_series_from_attachment_bytes(path.name, raw)
@@ -60,6 +72,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         audit_path=args.audit or None,
         llm_model=args.model,
         llm_base_url=args.base_url,
+        allow_fallback=not args.no_fallback,
     )
     report = engine.run(question.strip(), attachments)
     out = report.to_dict()
@@ -106,6 +119,11 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--base-url", default=None)
     a.add_argument("--audit", default="")
     a.add_argument("--output", "-o", default="")
+    a.add_argument(
+        "--no-fallback",
+        action="store_true",
+        help="Fail instead of falling back to mock when LLM mode errors",
+    )
     a.set_defaults(func=cmd_analyze)
 
     d = sub.add_parser("diagnose", help="Phase 1 capability diagnostic CLI")

@@ -3,7 +3,7 @@
 **Date:** 2026-07-13  
 **Owner:** Aiona Edge  
 **Fixture:** `fixtures/skillopt_edit_planning_trajectories.json`  
-**LLM:** `unsloth/Qwen3.6-35B-A3B-NVFP4` @ `http://spark-56bc:8888/v1`  
+**LLM:** OpenAI-compatible endpoint, e.g. `http://127.0.0.1:8000/v1`  
 **Runner:** `scripts/compare_mock_vs_llm.py`  
 **Local artifact (gitignored):** `data/mock_vs_llm_comparison.json`
 

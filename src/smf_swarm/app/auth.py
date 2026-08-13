@@ -9,6 +9,11 @@ from typing import Optional
 
 from fastapi import Header, HTTPException
 
+from smf_swarm.logutil import get_logger
+
+_log = get_logger("smf_swarm.auth")
+_process_share_secret: str | None = None
+
 
 def api_token() -> str:
     return (os.environ.get("SMF_SWARM_API_TOKEN") or "").strip()
@@ -16,6 +21,25 @@ def api_token() -> str:
 
 def auth_enabled() -> bool:
     return bool(api_token())
+
+
+def is_loopback_bind(host: str) -> bool:
+    h = (host or "").strip().lower()
+    if h.startswith("[") and h.endswith("]"):
+        h = h[1:-1]
+    return h in {"127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1"}
+
+
+def require_share_secret_for_bind(host: str) -> None:
+    """Non-loopback binds must set SMF_SWARM_SHARE_SECRET (no hardcoded HMAC)."""
+    if is_loopback_bind(host):
+        return
+    if (os.environ.get("SMF_SWARM_SHARE_SECRET") or "").strip():
+        return
+    raise RuntimeError(
+        "Non-loopback bind requires SMF_SWARM_SHARE_SECRET "
+        "(refusing hardcoded share HMAC)"
+    )
 
 
 def require_api_auth(
@@ -40,12 +64,26 @@ def new_share_id() -> str:
 
 
 def share_secret() -> str:
-    # Prefer dedicated secret; fall back to API token; else ephemeral-ish machine salt
-    return (
-        os.environ.get("SMF_SWARM_SHARE_SECRET")
-        or api_token()
-        or "smf-swarm-dev-share-secret"
-    )
+    """HMAC key for /r/ signatures.
+
+    Prefer SMF_SWARM_SHARE_SECRET, then the API token. Otherwise generate a
+    per-process random secret (loopback/dev only). Never fall back to a
+    hardcoded constant.
+    """
+    global _process_share_secret
+    env = (os.environ.get("SMF_SWARM_SHARE_SECRET") or "").strip()
+    if env:
+        return env
+    tok = api_token()
+    if tok:
+        return tok
+    if _process_share_secret is None:
+        _process_share_secret = secrets.token_hex(32)
+        _log.warning(
+            "SMF_SWARM_SHARE_SECRET unset; using a per-process random secret. "
+            "Signed /r/ links will not survive restart."
+        )
+    return _process_share_secret
 
 
 def sign_run_id(run_id: str) -> str:

@@ -55,11 +55,25 @@ class AuditLog:
 
     def _load(self) -> None:
         assert self.path is not None
-        for line in self.path.read_text(encoding="utf-8").splitlines():
+        from smf_swarm.logutil import get_logger
+
+        log = get_logger("smf_swarm.audit")
+        for line_no, line in enumerate(
+            self.path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             if not line.strip():
                 continue
-            data = json.loads(line)
-            ev = AuditEvent(**data)
+            try:
+                data = json.loads(line)
+                ev = AuditEvent(**data)
+            except (json.JSONDecodeError, TypeError, KeyError, ValueError) as exc:
+                log.warning(
+                    "Skipping corrupt audit line %s in %s: %s",
+                    line_no,
+                    self.path,
+                    exc,
+                )
+                continue
             self._events.append(ev)
             self._last_hash = ev.event_hash
 

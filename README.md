@@ -152,7 +152,11 @@ Env fallbacks still work:
 | `SMF_SWARM_LLM_MODEL` | Default model |
 | `SMF_SWARM_LLM_API_KEY` | Default API key |
 | `SMF_SWARM_API_TOKEN` | Protect analyze/history if set |
+| `SMF_SWARM_SHARE_SECRET` | HMAC secret for signed `/r/` links (required if `--host` is not loopback) |
+| `SMF_SWARM_LLM_ALLOW_PRIVATE` | Set `1` to allow RFC1918 LLM endpoints |
 | `SMF_SWARM_HISTORY` | Override history JSONL path |
+| `SMF_SWARM_LOG_LEVEL` | Stdlib log level (`INFO` default) |
+| `SMF_SWARM_STRICT` | If `1`, history write failures return HTTP 500 |
 
 ---
 
@@ -160,10 +164,13 @@ Env fallbacks still work:
 
 ```bash
 pip install -e ".[dev]"
+ruff check src tests scripts
 pytest -q
 smf-swarm analyze -q "Smoke test" -d fixtures/sample_growth.csv --mode mock
 curl -s http://127.0.0.1:8787/api/health
 ```
+
+See **[SECURITY.md](SECURITY.md)** before binding to a non-loopback address.
 
 ---
 
@@ -172,6 +179,7 @@ curl -s http://127.0.0.1:8787/api/health
 | Doc | Purpose |
 |-----|---------|
 | **[INSTALL.md](INSTALL.md)** | End-user download, run, Settings, troubleshooting |
+| **[SECURITY.md](SECURITY.md)** | Vulnerability reporting and networked-use rules |
 | **[AGENTS.md](AGENTS.md)** | Agent install / operate notes |
 | [`docs/PRODUCT_APP_v0.5.md`](docs/PRODUCT_APP_v0.5.md) | UI polish release notes |
 | [`docs/PRODUCT_APP_v0.4.1.md`](docs/PRODUCT_APP_v0.4.1.md) | Settings UI |
@@ -187,7 +195,7 @@ curl -s http://127.0.0.1:8787/api/health
 
 - Default analysis mode is **mock** (no network required).  
 - Outputs are **decision support**, not professional advice.  
-- Repo is currently private; install via Git clone as above.  
+- This repository is **public**. Commercial verticals stay in private repos.  
 - Keep docs in lockstep when changing CLI / API / UI.
 
 ## License

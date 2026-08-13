@@ -1,7 +1,14 @@
-# SMF Swarm 2.0 — Phase 1 Status
+# SMF Swarm 2.0 — Phase 1 Status (historical)
 
-**Last updated:** 2026-07-13  
-**Package version:** 0.1.0  
+> **Superseded.** This file is the Phase 1 *library* status from 2026-07-13
+> (package **0.1.0**, 6 tests, private repo). The product on `main` is
+> **0.5.0**, public at https://github.com/smfworks/smf-swarm-2.0, with a much
+> larger pytest suite. For current install/run/security notes use
+> [README.md](../README.md), [INSTALL.md](../INSTALL.md), and
+> [SECURITY.md](../SECURITY.md).
+
+**Last updated:** 2026-07-13 (banner added 2026-08-13)
+**Package version at the time:** 0.1.0
 **Branch:** `main`
 
 ## Summary
@@ -14,7 +21,7 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 | Capability diagnostic | Done — mock + LLM backends |
 | Phase1Pipeline | Done — permission-gated diagnosis |
 | Offline tests | Green — `pytest -q` → 6 passed |
-| GitHub | https://github.com/smfworks/smf-swarm-2.0 (private) |
+| GitHub | https://github.com/smfworks/smf-swarm-2.0 (was private in Phase 1; **now public**) |
 
 ## Notable commits
 
@@ -33,7 +40,7 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 
 ## Mock vs LLM
 
-- Endpoint: DGX Spark `spark-56bc:8888` / `unsloth/Qwen3.6-35B-A3B-NVFP4`
+- Endpoint example: `http://127.0.0.1:8000/v1` (lab hosts are not documented here)
 - Theme overlap: prioritization, executable plan, risk  
 - Policy: mock = CI; LLM = production insight  
 - Details: [`MOCK_VS_LLM.md`](MOCK_VS_LLM.md)

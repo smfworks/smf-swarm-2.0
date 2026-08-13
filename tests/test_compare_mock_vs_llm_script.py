@@ -370,11 +370,11 @@ def test_main_creates_the_output_directory_before_writing(monkeypatch, tmp_path)
             return None
 
         def get(self, url: str) -> ModelResponse:
-            assert url == "http://spark-56bc:8888/v1/models"
+            assert url == "http://127.0.0.1:8000/v1/models"
             return ModelResponse()
 
         def post(self, url: str, json: dict) -> Response:
-            assert url == "http://spark-56bc:8888/v1/chat/completions"
+            assert url == "http://127.0.0.1:8000/v1/chat/completions"
             assert json["model"] == "served/model"
             return Response()
 

@@ -469,6 +469,10 @@ class LLMPredictiveBackend:
     ) -> Dict[str, Any]:
         import httpx
 
+        from smf_swarm.app.llm_url import validate_llm_base_url
+
+        self.base_url = validate_llm_base_url(self.base_url)
+
         att_block = "\n\n".join(
             f"### File: {a.filename}\n{a.preview(6000)}" for a in attachments
         ) or "(no attachments)"
@@ -512,7 +516,9 @@ persona_views (array of {{persona, role, findings (string array), confidence (0-
             "temperature": 0.3,
             "max_tokens": 3500,
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(
+            timeout=self.timeout, trust_env=False, follow_redirects=False
+        ) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=body
             )
@@ -630,15 +636,19 @@ class PredictiveSwarmEngine:
         llm_base_url: Optional[str] = None,
         llm_api_key: str = "",
         agent_name: str = "swarm-predictive-ui",
+        allow_fallback: bool = True,
     ) -> None:
         from smf_swarm.governance import AuditLog, IdentityRegistry, PermissionEngine
+        from smf_swarm.logutil import get_logger, safe_url_for_log
 
         self.requested_mode = mode if mode in ("mock", "llm") else "mock"
         self.mode = self.requested_mode
-        self.llm_model = llm_model or "unsloth/Qwen3.6-35B-A3B-NVFP4"
-        self.llm_base_url = llm_base_url or "http://spark-56bc:8888/v1"
+        self.llm_model = llm_model or ""
+        self.llm_base_url = llm_base_url or ""
         self.fallback_used = False
+        self.allow_fallback = allow_fallback
         self.backend: "LLMPredictiveBackend | MockPredictiveBackend"
+        self._log = get_logger("smf_swarm.engine")
 
         self.identities = IdentityRegistry()
         self.audit = AuditLog(path=audit_path)
@@ -664,10 +674,18 @@ class PredictiveSwarmEngine:
         )
 
         if self.mode == "llm":
+            from smf_swarm.app.llm_url import validate_llm_base_url
+
+            self.llm_base_url = validate_llm_base_url(self.llm_base_url)
+            self._log.info(
+                "LLM backend configured url=%s model=%s",
+                safe_url_for_log(self.llm_base_url),
+                self.llm_model or "(unset)",
+            )
             self.backend = LLMPredictiveBackend(
                 model=self.llm_model,
                 base_url=self.llm_base_url,
-                api_key=llm_api_key or "not-needed",
+                api_key=llm_api_key or "",
                 timeout=120.0,
             )
         else:
@@ -711,7 +729,11 @@ class PredictiveSwarmEngine:
                 outcome="failure",
                 details={"error": str(e)},
             )
-            if self.requested_mode == "llm":
+            if self.requested_mode == "llm" and self.allow_fallback:
+                self._log.warning(
+                    "LLM analysis failed (%s); falling back to mock",
+                    type(e).__name__,
+                )
                 raw = MockPredictiveBackend().analyze(q, attachments)
                 self.mode = "mock"
                 self.fallback_used = True

@@ -72,7 +72,7 @@ FIXTURE = ROOT / "fixtures" / "skillopt_edit_planning_trajectories.json"
 OUT = ROOT / "data" / "mock_vs_llm_comparison.json"
 RAW = ROOT / "data" / "llm_raw_response.txt"
 BASE_URL = normalize_base_url(
-    os.environ.get("SMF_SWARM_EVAL_BASE_URL", "http://spark-56bc:8888/v1")
+    os.environ.get("SMF_SWARM_EVAL_BASE_URL", "http://127.0.0.1:8000/v1")
 )
 MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "")
 
