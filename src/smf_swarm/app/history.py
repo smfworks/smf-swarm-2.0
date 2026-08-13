@@ -53,6 +53,11 @@ class RunHistory:
         self.path = Path(path) if path else default_history_path()
         self.max_entries = max_entries
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if os.name == "posix":
+            try:
+                os.chmod(self.path.parent, 0o700)
+            except OSError:
+                pass
 
     def append(self, report: Dict[str, Any]) -> None:
         slim = {
@@ -72,6 +77,11 @@ class RunHistory:
             if len(lines) > self.max_entries:
                 lines = lines[-self.max_entries :]
             _rewrite(handle, lines)
+        if os.name == "posix":
+            try:
+                os.chmod(self.path, 0o600)
+            except OSError:
+                pass
 
     def _trim(self) -> None:
         if not self.path.exists():
