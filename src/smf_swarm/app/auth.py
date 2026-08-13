@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 from typing import Optional
 
 from fastapi import Header, HTTPException
+
+_log = logging.getLogger("smf_swarm.auth")
+_ephemeral_share_secret: Optional[str] = None
 
 
 def api_token() -> str:
@@ -40,12 +44,23 @@ def new_share_id() -> str:
 
 
 def share_secret() -> str:
-    # Prefer dedicated secret; fall back to API token; else ephemeral-ish machine salt
-    return (
-        os.environ.get("SMF_SWARM_SHARE_SECRET")
-        or api_token()
-        or "smf-swarm-dev-share-secret"
-    )
+    """HMAC key for signed /r/{run_id} links.
+
+    Prefer SMF_SWARM_SHARE_SECRET, then the API token. If neither is set,
+    use a process-ephemeral key (signed links will not survive restart).
+    Never fall back to a committed static string.
+    """
+    configured = (os.environ.get("SMF_SWARM_SHARE_SECRET") or "").strip() or api_token()
+    if configured:
+        return configured
+    global _ephemeral_share_secret
+    if _ephemeral_share_secret is None:
+        _ephemeral_share_secret = secrets.token_hex(32)
+        _log.warning(
+            "SMF_SWARM_SHARE_SECRET unset; using a process-ephemeral HMAC key. "
+            "Signed /r/ links will not survive process restart."
+        )
+    return _ephemeral_share_secret
 
 
 def sign_run_id(run_id: str) -> str:

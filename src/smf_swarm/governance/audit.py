@@ -58,8 +58,11 @@ class AuditLog:
         for line in self.path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
-            data = json.loads(line)
-            ev = AuditEvent(**data)
+            try:
+                data = json.loads(line)
+                ev = AuditEvent(**data)
+            except (json.JSONDecodeError, TypeError, KeyError, ValueError):
+                continue
             self._events.append(ev)
             self._last_hash = ev.event_hash
 

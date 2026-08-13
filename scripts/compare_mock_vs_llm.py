@@ -7,14 +7,10 @@ import math
 import os
 import re
 import sys
-import unicodedata
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
-
-MAX_MODEL_ID_LENGTH = 256
 _REQUIRED_GAP_FIELDS = frozenset(
     {
         "name",
@@ -29,34 +25,13 @@ _REQUIRED_GAP_FIELDS = frozenset(
 def _contains_control_characters(value: str) -> bool:
     """Detect terminal, line, separator, and Unicode formatting characters."""
 
-    return any(
-        unicodedata.category(char) in {"Cc", "Cf", "Zl", "Zp"} for char in value
-    )
+    return contains_control_characters(value)
 
 
 def normalize_base_url(base_url: str) -> str:
     """Return a canonical endpoint URL with no output-tainting metadata."""
 
-    if _contains_control_characters(base_url):
-        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include control characters")
-    if base_url != base_url.strip():
-        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include surrounding whitespace")
-    parsed = urlsplit(base_url)
-    if parsed.username is not None or parsed.password is not None:
-        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include credentials")
-    if "?" in base_url or "#" in base_url:
-        raise ValueError("SMF_SWARM_EVAL_BASE_URL must not include a query or fragment")
-    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("SMF_SWARM_EVAL_BASE_URL must be an absolute HTTP(S) URL")
-    try:
-        parsed.port
-    except ValueError:
-        raise ValueError(
-            "SMF_SWARM_EVAL_BASE_URL must be an absolute HTTP(S) URL"
-        ) from None
-    return urlunsplit(
-        (parsed.scheme.lower(), parsed.netloc, parsed.path.rstrip("/"), "", "")
-    )
+    return normalize_llm_base_url(base_url, name="SMF_SWARM_EVAL_BASE_URL")
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,12 +42,18 @@ from smf_swarm.capability.diagnostic import (  # noqa: E402
     MockCapabilityBackend,
     default_format_trajectory,
 )
+from smf_swarm.config import (  # noqa: E402
+    DEFAULT_EVAL_BASE_URL,
+    MAX_MODEL_ID_LENGTH,
+    contains_control_characters,
+    normalize_llm_base_url,
+)
 
 FIXTURE = ROOT / "fixtures" / "skillopt_edit_planning_trajectories.json"
 OUT = ROOT / "data" / "mock_vs_llm_comparison.json"
 RAW = ROOT / "data" / "llm_raw_response.txt"
 BASE_URL = normalize_base_url(
-    os.environ.get("SMF_SWARM_EVAL_BASE_URL", "http://spark-56bc:8888/v1")
+    os.environ.get("SMF_SWARM_EVAL_BASE_URL", DEFAULT_EVAL_BASE_URL)
 )
 MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "")
 
@@ -262,7 +243,7 @@ def main() -> int:
             "max_tokens": 2500,
         }
 
-        print(f"Calling LLM on DGX Spark (model={model!r})...", flush=True)
+        print(f"Calling LLM (model={model!r})...", flush=True)
         r = client.post(f"{BASE_URL}/chat/completions", json=body)
         r.raise_for_status()
         payload = r.json()

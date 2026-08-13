@@ -33,7 +33,7 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 
 ## Mock vs LLM
 
-- Endpoint: DGX Spark `spark-56bc:8888` / `unsloth/Qwen3.6-35B-A3B-NVFP4`
+- Endpoint: set `SMF_SWARM_EVAL_BASE_URL` / `SMF_SWARM_EVAL_MODEL` (no lab default)
 - Theme overlap: prioritization, executable plan, risk  
 - Policy: mock = CI; LLM = production insight  
 - Details: [`MOCK_VS_LLM.md`](MOCK_VS_LLM.md)

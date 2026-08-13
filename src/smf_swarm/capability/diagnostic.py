@@ -134,6 +134,8 @@ class LLMCapabilityBackend:
     ) -> List[CapabilityGap]:
         import httpx
 
+        from smf_swarm.config import httpx_client_kwargs
+
         success_ex = "\n\n".join(
             f"--- Success {i+1} ---\n{default_format_trajectory(t)}"
             for i, t in enumerate(successful[:3])
@@ -168,7 +170,7 @@ name, description, failure_coverage (0-1 float), evidence (string array), sugges
             ],
             "temperature": 0.2,
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(**httpx_client_kwargs(self.timeout)) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=body
             )

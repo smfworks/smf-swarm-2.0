@@ -45,6 +45,21 @@ def test_llm_test_requires_url(client):
     assert r.status_code == 400
 
 
+def test_llm_test_rejects_metadata_url(client):
+    r = client.post("/api/llm/test", data={"base_url": "http://169.254.169.254/"})
+    assert r.status_code == 400
+    assert "metadata" in r.json()["detail"].lower()
+
+
+def test_llm_test_rejects_credentialed_url(client):
+    r = client.post(
+        "/api/llm/test",
+        data={"base_url": "http://user:secret-marker@127.0.0.1:8888/v1"},
+    )
+    assert r.status_code == 400
+    assert "secret-marker" not in r.text
+
+
 def test_health_includes_llm_defaults(client):
     h = client.get("/api/health")
     assert "llm_defaults" in h.json()

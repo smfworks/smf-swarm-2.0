@@ -2,6 +2,9 @@ include README.md
 include LICENSE
 include AGENTS.md
 include INSTALL.md
+include SECURITY.md
+include CONTRIBUTING.md
+include CHANGELOG.md
 include pyproject.toml
 recursive-include src/smf_swarm/app/static *
 recursive-include fixtures *
