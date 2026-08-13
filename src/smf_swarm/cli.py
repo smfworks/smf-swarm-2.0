@@ -6,10 +6,21 @@ import json
 import sys
 from pathlib import Path
 
+from smf_swarm.config import (
+    MAX_FILE_BYTES,
+    configure_logging,
+    env_str,
+    logger,
+    normalize_llm_base_url,
+    optional_model_id,
+    safe_filename,
+)
+
 
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
+    configure_logging()
     host = args.host
     port = args.port
     print(f"SMF Swarm UI → http://{host}:{port}")
@@ -34,7 +45,11 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     question = args.question
     if args.question_file:
-        question = Path(args.question_file).read_text(encoding="utf-8")
+        qpath = Path(args.question_file)
+        if not qpath.is_file():
+            print(f"error: question file not found: {qpath}", file=sys.stderr)
+            return 2
+        question = qpath.read_text(encoding="utf-8")
     if not question or not str(question).strip():
         print("error: provide --question or --question-file", file=sys.stderr)
         return 2
@@ -42,12 +57,19 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     attachments = []
     for p in args.data or []:
         path = Path(p)
+        if not path.is_file():
+            print(f"error: data file not found: {path}", file=sys.stderr)
+            return 2
         raw = path.read_bytes()
-        text = extract_text_from_bytes(path.name, raw)
-        charts = extract_series_from_attachment_bytes(path.name, raw)
+        if len(raw) > MAX_FILE_BYTES:
+            print(f"error: {path.name}: file too large (max 5MB)", file=sys.stderr)
+            return 2
+        filename = safe_filename(path.name)
+        text = extract_text_from_bytes(filename, raw)
+        charts = extract_series_from_attachment_bytes(filename, raw)
         attachments.append(
             Attachment(
-                filename=path.name,
+                filename=filename,
                 content_type="application/octet-stream",
                 text=text,
                 size_bytes=len(raw),
@@ -55,16 +77,36 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             )
         )
 
-    engine = PredictiveSwarmEngine(
-        mode=args.mode,
-        audit_path=args.audit or None,
-        llm_model=args.model,
-        llm_base_url=args.base_url,
-    )
-    report = engine.run(question.strip(), attachments)
+    try:
+        base_url = args.base_url or env_str("SMF_SWARM_LLM_BASE_URL") or None
+        if base_url:
+            base_url = normalize_llm_base_url(base_url)
+        model = optional_model_id(args.model or env_str("SMF_SWARM_LLM_MODEL") or None)
+        api_key = args.api_key or env_str("SMF_SWARM_LLM_API_KEY")
+        engine = PredictiveSwarmEngine(
+            mode=args.mode,
+            audit_path=args.audit or None,
+            llm_model=model,
+            llm_base_url=base_url,
+            llm_api_key=api_key,
+        )
+        report = engine.run(question.strip(), attachments)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    except Exception:
+        logger.exception("analyze failed")
+        print("error: analysis failed", file=sys.stderr)
+        return 1
+
     out = report.to_dict()
     if args.output:
-        Path(args.output).write_text(json.dumps(out, indent=2), encoding="utf-8")
+        out_path = Path(args.output)
+        try:
+            out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+        except OSError as e:
+            print(f"error: cannot write {out_path}: {e}", file=sys.stderr)
+            return 1
         print(f"wrote {args.output}")
     else:
         print(json.dumps(out, indent=2))
@@ -104,6 +146,11 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--mode", choices=["mock", "llm"], default="mock")
     a.add_argument("--model", default=None)
     a.add_argument("--base-url", default=None)
+    a.add_argument(
+        "--api-key",
+        default=None,
+        help="LLM API key (prefer SMF_SWARM_LLM_API_KEY env instead)",
+    )
     a.add_argument("--audit", default="")
     a.add_argument("--output", "-o", default="")
     a.set_defaults(func=cmd_analyze)

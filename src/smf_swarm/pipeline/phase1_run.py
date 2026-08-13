@@ -123,7 +123,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.fixture:
-        data = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+        fixture_path = Path(args.fixture)
+        if not fixture_path.is_file():
+            print(f"error: fixture not found: {fixture_path}", file=sys.stderr)
+            return 2
+        data = json.loads(fixture_path.read_text(encoding="utf-8"))
         successful = data.get("successful", [])
         failed = data.get("failed", [])
     else:
