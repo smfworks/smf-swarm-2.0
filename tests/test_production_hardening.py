@@ -72,6 +72,15 @@ def test_llm_url_accepts_http():
     assert validate_llm_base_url("http://127.0.0.1:8888/v1") == "http://127.0.0.1:8888/v1"
 
 
+def test_engine_llm_requires_explicit_endpoint():
+    from smf_swarm.analysis import PredictiveSwarmEngine
+
+    with pytest.raises(ValueError, match="llm_base_url"):
+        PredictiveSwarmEngine(mode="llm")
+    engine = PredictiveSwarmEngine(mode="mock")
+    assert "spark-56bc" not in str(engine.llm_base_url or "")
+
+
 def test_llm_test_rejects_metadata_url(client):
     r = client.post("/api/llm/test", data={"base_url": "http://169.254.169.254/"})
     assert r.status_code == 400

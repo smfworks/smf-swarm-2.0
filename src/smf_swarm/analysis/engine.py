@@ -635,8 +635,8 @@ class PredictiveSwarmEngine:
 
         self.requested_mode = mode if mode in ("mock", "llm") else "mock"
         self.mode = self.requested_mode
-        self.llm_model = llm_model or "unsloth/Qwen3.6-35B-A3B-NVFP4"
-        self.llm_base_url = llm_base_url or "http://spark-56bc:8888/v1"
+        self.llm_model = llm_model
+        self.llm_base_url = llm_base_url
         self.fallback_used = False
         self.backend: "LLMPredictiveBackend | MockPredictiveBackend"
 
@@ -666,11 +666,17 @@ class PredictiveSwarmEngine:
         if self.mode == "llm":
             from smf_swarm.app.url_policy import validate_llm_base_url
 
-            self.llm_base_url = validate_llm_base_url(self.llm_base_url)
+            if not self.llm_base_url:
+                raise ValueError("LLM mode requires llm_base_url")
+            if not self.llm_model:
+                raise ValueError("LLM mode requires llm_model")
+            base = validate_llm_base_url(self.llm_base_url)
+            model = self.llm_model
+            self.llm_base_url = base
             self.backend = LLMPredictiveBackend(
-                model=self.llm_model,
-                base_url=self.llm_base_url,
-                api_key=llm_api_key or "not-needed",
+                model=model,
+                base_url=base,
+                api_key=llm_api_key or "",
                 timeout=120.0,
             )
         else:
@@ -762,7 +768,7 @@ class PredictiveSwarmEngine:
         model_used = (
             "heuristic-mock"
             if self.mode == "mock"
-            else self.llm_model
+            else (self.llm_model or "")
         )
 
         report = PredictiveReport(
