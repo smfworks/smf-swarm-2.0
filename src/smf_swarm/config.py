@@ -18,7 +18,9 @@ MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_FILES = 8
 MAX_QUESTION_CHARS = 8000
 
-DEFAULT_EVAL_BASE_URL = "http://127.0.0.1:8888/v1"
+# Empty on purpose: eval scripts must set SMF_SWARM_EVAL_BASE_URL.
+# A baked-in loopback URL is a fail-open default (wrong host, surprise traffic).
+DEFAULT_EVAL_BASE_URL = ""
 
 _METADATA_HOSTS = frozenset(
     {

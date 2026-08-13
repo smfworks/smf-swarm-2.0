@@ -76,3 +76,24 @@ def verify_run_signature(run_id: str, sig: str) -> bool:
         return False
     expected = sign_run_id(run_id)
     return hmac.compare_digest(expected, sig)
+
+
+def require_share_access(share_id: str, sig: str = "") -> None:
+    """When API auth is on, capability URLs must also carry a valid HMAC."""
+    if not auth_enabled():
+        return
+    if not verify_run_signature(share_id, sig):
+        raise HTTPException(status_code=403, detail="invalid or missing share signature")
+
+
+def public_share_path(share_id: str) -> str:
+    if auth_enabled():
+        return f"/share/{share_id}?s={sign_run_id(share_id)}"
+    return f"/share/{share_id}"
+
+
+def public_share_report(rep: dict) -> dict:
+    """Drop signing material from unauthenticated share payloads."""
+    out = dict(rep)
+    out.pop("signed_url_path", None)
+    return out

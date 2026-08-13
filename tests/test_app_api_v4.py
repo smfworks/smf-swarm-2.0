@@ -64,7 +64,9 @@ def test_auth_allows_with_token(auth_client):
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    # share remains public
+    # auth-on: unsigned share is closed; signed path from analyze still works
+    unsigned = auth_client.get(f"/share/{body['share_id']}")
+    assert unsigned.status_code == 403
     s = auth_client.get(body["share_url_path"])
     assert s.status_code == 200
 

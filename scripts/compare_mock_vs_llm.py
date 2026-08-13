@@ -52,10 +52,19 @@ from smf_swarm.config import (  # noqa: E402
 FIXTURE = ROOT / "fixtures" / "skillopt_edit_planning_trajectories.json"
 OUT = ROOT / "data" / "mock_vs_llm_comparison.json"
 RAW = ROOT / "data" / "llm_raw_response.txt"
-BASE_URL = normalize_base_url(
-    os.environ.get("SMF_SWARM_EVAL_BASE_URL", DEFAULT_EVAL_BASE_URL)
-)
+# Do not resolve a network target at import time (tests import this module).
+BASE_URL = ""
 MODEL = os.environ.get("SMF_SWARM_EVAL_MODEL", "")
+
+
+def configured_eval_base_url() -> str:
+    """Fail closed: no implicit 127.0.0.1:8888 (or any) default."""
+    raw = (os.environ.get("SMF_SWARM_EVAL_BASE_URL") or DEFAULT_EVAL_BASE_URL or "").strip()
+    if not raw:
+        raise ValueError(
+            "SMF_SWARM_EVAL_BASE_URL is required; refusing implicit eval endpoint"
+        )
+    return normalize_base_url(raw)
 
 
 def resolve_model(client: httpx.Client, base_url: str, configured_model: str) -> str:
@@ -228,8 +237,9 @@ def main() -> int:
         "name, description, failure_coverage, evidence, suggested_criterion. "
         "Keep each field short. JSON only."
     )
+    base_url = configured_eval_base_url()
     with httpx.Client(timeout=180.0, trust_env=False) as client:
-        model = resolve_model(client, BASE_URL, MODEL)
+        model = resolve_model(client, base_url, MODEL)
         body = {
             "model": model,
             "messages": [
@@ -244,7 +254,7 @@ def main() -> int:
         }
 
         print(f"Calling LLM (model={model!r})...", flush=True)
-        r = client.post(f"{BASE_URL}/chat/completions", json=body)
+        r = client.post(f"{base_url}/chat/completions", json=body)
         r.raise_for_status()
         payload = r.json()
     msg = payload["choices"][0]["message"]
@@ -288,7 +298,7 @@ def main() -> int:
         "fixture": str(FIXTURE),
         "domain": domain,
         "model": model,
-        "base_url": BASE_URL,
+        "base_url": base_url,
         "finish_reason": finish,
         "mock": {"n_gaps": len(mock_gaps), "gaps": [row(g) for g in mock_gaps]},
         "llm": {

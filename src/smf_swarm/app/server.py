@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import List, Optional
 
@@ -21,7 +20,10 @@ from smf_swarm.analysis.series import extract_series_from_attachment_bytes
 from smf_swarm.app.auth import (
     auth_enabled,
     new_share_id,
+    public_share_path,
+    public_share_report,
     require_api_auth,
+    require_share_access,
     sign_run_id,
     verify_run_signature,
 )
@@ -206,9 +208,7 @@ def create_app() -> FastAPI:
                 )
             )
 
-        audit_dir = Path(tempfile.gettempdir()) / "smf-swarm-audits"
-        audit_dir.mkdir(parents=True, exist_ok=True)
-        audit_path = audit_dir / "app-audit.jsonl"
+        audit_path = history.path.parent / "app-audit.jsonl"
 
         # Prefer per-request UI settings; fall back to process env
         try:
@@ -254,7 +254,7 @@ def create_app() -> FastAPI:
         share_id = new_share_id()
         report.share_id = share_id
         sig = sign_run_id(report.run_id)
-        report.share_path = f"/share/{share_id}"
+        report.share_path = public_share_path(share_id)
         payload = report.to_dict()
         payload["markdown"] = report.to_markdown()
         payload["share_url_path"] = report.share_path
@@ -286,14 +286,16 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/api/share/{share_id}")
-    def api_share(share_id: str):
+    def api_share(share_id: str, s: str = ""):
+        require_share_access(share_id, s)
         rep = history.get_by_share_id(share_id)
         if not rep:
             raise HTTPException(404, "shared report not found")
-        return rep
+        return public_share_report(rep)
 
     @app.get("/share/{share_id}", response_class=HTMLResponse)
-    def share_page(share_id: str):
+    def share_page(share_id: str, s: str = ""):
+        require_share_access(share_id, s)
         rep = history.get_by_share_id(share_id)
         if not rep:
             raise HTTPException(404, "shared report not found")
