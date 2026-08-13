@@ -13,7 +13,7 @@ git clone https://github.com/smfworks/smf-swarm-2.0.git
 cd smf-swarm-2.0
 ```
 
-(Private repo: use credentials that can access `smfworks/smf-swarm-2.0`.)
+The platform core is public. Commercial vertical packs stay in private repositories.
 
 ## Install
 
@@ -87,7 +87,7 @@ curl -s http://127.0.0.1:8787/api/health
 
 ## PyPI note
 
-Private Git install today. When publishing publicly:
+Install from the public GitHub clone. When publishing to PyPI:
 
 ```bash
 pip install build twine
@@ -106,4 +106,4 @@ Package name: **`smf-swarm`**. Entry point: **`smf-swarm`**.
 | LLM mode fails | Settings → Test connection; app can fall back to mock |
 | Charts missing | Use CSV with ≥3 numeric rows |
 | 401 Unauthorized | Set matching `SMF_SWARM_API_TOKEN` / UI prompt |
-| Git clone denied | Need access to private `smfworks/smf-swarm-2.0` |
+|| Git clone denied | Check GitHub access to public `smfworks/smf-swarm-2.0` |

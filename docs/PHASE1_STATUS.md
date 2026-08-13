@@ -1,7 +1,16 @@
 # SMF Swarm 2.0 — Phase 1 Status
 
-**Last updated:** 2026-07-13  
-**Package version:** 0.1.0  
+**Current package:** 0.5.1 (public platform core)  
+**Offline tests:** `pytest -q` — 76+ (see CI)  
+**This file below is Phase 1 history (2026-07-13, v0.1.0 / 6 tests). It is not current product status.**
+
+**Last updated:** 2026-08-13
+
+---
+
+# Historical record (2026-07-13)
+
+**Package version then:** 0.1.0  
 **Branch:** `main`
 
 ## Summary

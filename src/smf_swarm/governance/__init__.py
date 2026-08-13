@@ -1,8 +1,8 @@
 """Governance primitives for SMF Swarm 2.0 Phase 1."""
 
-from .audit import AuditLog, AuditEvent
+from .audit import AuditEvent, AuditLog
 from .identity import AgentIdentity, IdentityRegistry
-from .permissions import PermissionEngine, PermissionDenied
+from .permissions import PermissionDenied, PermissionEngine
 
 __all__ = [
     "AgentIdentity",

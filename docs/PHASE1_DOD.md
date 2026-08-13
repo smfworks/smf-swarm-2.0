@@ -29,7 +29,7 @@
 
 ## Success criteria (checkable)
 
-- [x] `pytest -q` passes offline (mock diagnostic, no network) — **6 passed**
+- [x] `pytest -q` passes offline (mock diagnostic, no network) — **6 passed** (Phase 1 lock, 2026-07-13; current count is in PHASE1_STATUS / CI)
 - [x] Diagnostic returns ranked gaps from fixture trajectories
 - [x] Every pipeline action emits an audit event with hash chain integrity
 - [x] Unauthorized capability exercise is denied and audited

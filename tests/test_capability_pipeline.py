@@ -1,8 +1,9 @@
 """Tests for capability diagnostic + phase1 pipeline."""
-from smf_swarm.capability import CapabilityDiagnostic, MockCapabilityBackend
-from smf_swarm.pipeline import Phase1Pipeline
-from smf_swarm.governance import PermissionDenied
 import pytest
+
+from smf_swarm.capability import CapabilityDiagnostic, MockCapabilityBackend
+from smf_swarm.governance import PermissionDenied
+from smf_swarm.pipeline import Phase1Pipeline
 
 
 def test_mock_diagnostic_returns_ranked_gaps():

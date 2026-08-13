@@ -234,7 +234,7 @@ def _keywords(text: str) -> List[str]:
     stop = {
         "the", "and", "for", "with", "that", "this", "from", "will", "have",
         "what", "when", "where", "which", "into", "about", "your", "their",
-        "over", "past", "above", "below", "than", "this", "week", "month",
+        "over", "past", "above", "below", "than", "week", "month",
     }
     words = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{3,}", text.lower())
     freq: Dict[str, int] = {}
@@ -664,6 +664,9 @@ class PredictiveSwarmEngine:
         )
 
         if self.mode == "llm":
+            from smf_swarm.app.url_policy import validate_llm_base_url
+
+            self.llm_base_url = validate_llm_base_url(self.llm_base_url)
             self.backend = LLMPredictiveBackend(
                 model=self.llm_model,
                 base_url=self.llm_base_url,

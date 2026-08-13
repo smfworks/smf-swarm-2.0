@@ -20,6 +20,11 @@ class RunHistory:
         self.path = Path(path) if path else default_history_path()
         self.max_entries = max_entries
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if os.name == "posix":
+            try:
+                os.chmod(self.path.parent, 0o700)
+            except OSError:
+                pass
 
     def append(self, report: Dict[str, Any]) -> None:
         # Store a compact summary + full report
@@ -37,6 +42,11 @@ class RunHistory:
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(slim, default=str) + "\n")
         self._trim()
+        if os.name == "posix":
+            try:
+                os.chmod(self.path, 0o600)
+            except OSError:
+                pass
 
     def _trim(self) -> None:
         if not self.path.exists():

@@ -1,11 +1,11 @@
 """Tests for charts, share, and series extraction (v0.4)."""
+from smf_swarm.analysis import Attachment, PredictiveSwarmEngine
 from smf_swarm.analysis.series import (
+    extract_series_from_attachment_bytes,
     extract_series_from_csv,
     sparkline_svg,
 )
 from smf_swarm.app.auth import new_share_id, sign_run_id, verify_run_signature
-from smf_swarm.analysis import Attachment, PredictiveSwarmEngine
-from smf_swarm.analysis.series import extract_series_from_attachment_bytes
 
 
 def test_sparkline_svg_nonempty():
@@ -37,7 +37,8 @@ def test_engine_includes_charts():
     assert report.charts[0]["sparkline_svg"]
 
 
-def test_share_signature():
+def test_share_signature(monkeypatch):
+    monkeypatch.setenv("SMF_SWARM_SHARE_SECRET", "unit-test-secret")
     rid = "abc123"
     sig = sign_run_id(rid)
     assert verify_run_signature(rid, sig)

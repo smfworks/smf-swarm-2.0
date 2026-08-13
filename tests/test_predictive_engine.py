@@ -1,4 +1,6 @@
 """Tests for predictive analysis engine (offline) v0.3."""
+import pytest
+
 from smf_swarm.analysis import (
     Attachment,
     PredictiveSwarmEngine,
@@ -56,11 +58,8 @@ def test_mock_predictive_with_attachment():
 
 def test_question_required():
     engine = PredictiveSwarmEngine(mode="mock")
-    try:
+    with pytest.raises(ValueError):
         engine.run("   ")
-        assert False, "expected ValueError"
-    except ValueError:
-        pass
 
 
 def test_history_roundtrip(tmp_path):

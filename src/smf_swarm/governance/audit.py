@@ -54,7 +54,8 @@ class AuditLog:
             self._load()
 
     def _load(self) -> None:
-        assert self.path is not None
+        if self.path is None:
+            raise RuntimeError("audit path is not set")
         for line in self.path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue

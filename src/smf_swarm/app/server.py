@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from smf_swarm import __version__ as APP_VERSION
 from smf_swarm.analysis import (
     Attachment,
     PredictiveSwarmEngine,
@@ -20,15 +21,17 @@ from smf_swarm.app.auth import (
     auth_enabled,
     new_share_id,
     require_api_auth,
+    share_signing_configured,
     sign_run_id,
     verify_run_signature,
 )
 from smf_swarm.app.history import RunHistory
+from smf_swarm.app.url_policy import UnsafeLLMURL, validate_llm_base_url
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_FILES = 8
 MAX_FILE_BYTES = 5 * 1024 * 1024
-APP_VERSION = "0.5.0"
+ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json", ".txt", ".md", ".tsv", ".log"}
 
 
 def create_app() -> FastAPI:
@@ -58,10 +61,11 @@ def create_app() -> FastAPI:
             "mode_default": os.environ.get("SMF_SWARM_MODE", "mock"),
             "auth_required": auth_enabled(),
             "llm_defaults": {
-                "base_url": os.environ.get("SMF_SWARM_LLM_BASE_URL", ""),
-                "model": os.environ.get("SMF_SWARM_LLM_MODEL", ""),
+                "has_llm_base_url": bool(os.environ.get("SMF_SWARM_LLM_BASE_URL", "").strip()),
+                "has_model": bool(os.environ.get("SMF_SWARM_LLM_MODEL", "").strip()),
                 "has_env_api_key": bool(os.environ.get("SMF_SWARM_LLM_API_KEY")),
             },
+            "share_signing": share_signing_configured(),
         }
 
     @app.post("/api/llm/test")
@@ -77,6 +81,10 @@ def create_app() -> FastAPI:
         key = (api_key or os.environ.get("SMF_SWARM_LLM_API_KEY") or "").strip()
         if not url:
             raise HTTPException(400, "base_url is required")
+        try:
+            url = validate_llm_base_url(url)
+        except UnsafeLLMURL as exc:
+            raise HTTPException(400, str(exc)) from exc
         try:
             import httpx
         except ImportError as e:
@@ -96,8 +104,8 @@ def create_app() -> FastAPI:
                         models = [
                             m.get("id") for m in (data.get("data") or []) if isinstance(m, dict)
                         ][:12]
-                    except Exception:
-                        pass
+                    except ValueError:
+                        models = []
                     ok_model = (not mdl) or (mdl in models) or (not models)
                     return {
                         "ok": True,
@@ -170,18 +178,26 @@ def create_app() -> FastAPI:
         for uf in upload_list:
             if not uf.filename:
                 continue
+            filename = Path(uf.filename).name
+            suffix = Path(filename).suffix.lower()
+            if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+                raise HTTPException(
+                    400,
+                    f"{filename}: extension not allowed "
+                    f"(use {', '.join(sorted(ALLOWED_UPLOAD_SUFFIXES))})",
+                )
             raw = await uf.read()
             if len(raw) > MAX_FILE_BYTES:
-                raise HTTPException(400, f"{uf.filename}: file too large (max 5MB)")
+                raise HTTPException(400, f"{filename}: file too large (max 5MB)")
             text = extract_text_from_bytes(
-                uf.filename, raw, uf.content_type or ""
+                filename, raw, uf.content_type or ""
             )
             charts = extract_series_from_attachment_bytes(
-                uf.filename, raw, uf.content_type or ""
+                filename, raw, uf.content_type or ""
             )
             attachments.append(
                 Attachment(
-                    filename=uf.filename,
+                    filename=filename,
                     content_type=uf.content_type or "application/octet-stream",
                     text=text,
                     size_bytes=len(raw),
@@ -194,11 +210,17 @@ def create_app() -> FastAPI:
         audit_path = audit_dir / "app-audit.jsonl"
 
         # Prefer per-request UI settings; fall back to process env
-        resolved_base = (
+        raw_base = (
             (llm_base_url or "").strip()
             or os.environ.get("SMF_SWARM_LLM_BASE_URL")
             or None
         )
+        resolved_base = None
+        if raw_base:
+            try:
+                resolved_base = validate_llm_base_url(raw_base)
+            except UnsafeLLMURL as exc:
+                raise HTTPException(400, str(exc)) from exc
         resolved_model = (
             (llm_model or "").strip()
             or os.environ.get("SMF_SWARM_LLM_MODEL")
@@ -230,16 +252,21 @@ def create_app() -> FastAPI:
 
         share_id = new_share_id()
         report.share_id = share_id
-        sig = sign_run_id(report.run_id)
         report.share_path = f"/share/{share_id}"
         payload = report.to_dict()
         payload["markdown"] = report.to_markdown()
         payload["share_url_path"] = report.share_path
-        payload["signed_url_path"] = f"/r/{report.run_id}?s={sig}"
+        if share_signing_configured():
+            sig = sign_run_id(report.run_id)
+            payload["signed_url_path"] = f"/r/{report.run_id}?s={sig}"
+        else:
+            payload["signed_url_path"] = None
         try:
             history.append(payload)
-        except Exception:
-            pass
+        except OSError:
+            import logging
+
+            logging.getLogger("smf_swarm").exception("history append failed")
         return payload
 
     @app.get("/api/history")

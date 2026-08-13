@@ -12,7 +12,7 @@
 
 | | |
 |--|--|
-| **Version** | **0.5.0** |
+| **Version** | **0.5.1** |
 | **Package** | `smf-swarm` |
 | **Repo** | https://github.com/smfworks/smf-swarm-2.0 |
 | **License** | MIT (open source) |
@@ -187,7 +187,7 @@ curl -s http://127.0.0.1:8787/api/health
 
 - Default analysis mode is **mock** (no network required).  
 - Outputs are **decision support**, not professional advice.  
-- Repo is currently private; install via Git clone as above.  
+- This repository is **public**. Commercial verticals live in private repos.  
 - Keep docs in lockstep when changing CLI / API / UI.
 
 ## License

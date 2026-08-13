@@ -1,4 +1,5 @@
 """Optional API token auth + share tokens for reports."""
+
 from __future__ import annotations
 
 import hashlib
@@ -39,13 +40,22 @@ def new_share_id() -> str:
     return secrets.token_urlsafe(16)
 
 
+def share_signing_configured() -> bool:
+    """True when a dedicated share secret or API token can sign /r/ links."""
+    return bool((os.environ.get("SMF_SWARM_SHARE_SECRET") or "").strip() or api_token())
+
+
 def share_secret() -> str:
-    # Prefer dedicated secret; fall back to API token; else ephemeral-ish machine salt
-    return (
-        os.environ.get("SMF_SWARM_SHARE_SECRET")
-        or api_token()
-        or "smf-swarm-dev-share-secret"
-    )
+    """Return the HMAC key for signed report URLs.
+
+    Fail closed: never fall back to a public default string.
+    """
+    secret = (os.environ.get("SMF_SWARM_SHARE_SECRET") or "").strip() or api_token()
+    if not secret:
+        raise RuntimeError(
+            "Share signing is not configured. Set SMF_SWARM_SHARE_SECRET or SMF_SWARM_API_TOKEN."
+        )
+    return secret
 
 
 def sign_run_id(run_id: str) -> str:
@@ -57,7 +67,7 @@ def sign_run_id(run_id: str) -> str:
 
 
 def verify_run_signature(run_id: str, sig: str) -> bool:
-    if not run_id or not sig:
+    if not run_id or not sig or not share_signing_configured():
         return False
     expected = sign_run_id(run_id)
     return hmac.compare_digest(expected, sig)
