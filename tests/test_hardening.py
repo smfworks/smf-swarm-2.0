@@ -23,6 +23,10 @@ def test_normalize_rejects_credentials_and_metadata():
     with pytest.raises(ValueError, match="metadata"):
         normalize_llm_base_url("http://169.254.169.254/latest/meta-data")
     with pytest.raises(ValueError, match="metadata"):
+        normalize_llm_base_url("http://[::ffff:169.254.169.254]/")
+    with pytest.raises(ValueError):
+        normalize_llm_base_url("http://100.100.100.200/")
+    with pytest.raises(ValueError, match="metadata"):
         normalize_llm_base_url("http://metadata.google.internal/computeMetadata/v1/")
     with pytest.raises(ValueError, match="absolute HTTP"):
         normalize_llm_base_url("ftp://example.com/v1")
@@ -91,6 +95,12 @@ def test_audit_skips_corrupt_lines(tmp_path):
 
 def test_cli_missing_question_exits_2():
     assert cli_main(["analyze"]) == 2
+
+
+def test_serve_non_loopback_requires_token(monkeypatch):
+    monkeypatch.delenv("SMF_SWARM_API_TOKEN", raising=False)
+    monkeypatch.delenv("SMF_SWARM_ALLOW_OPEN_BIND", raising=False)
+    assert cli_main(["serve", "--host", "0.0.0.0", "--port", "8787"]) == 2
 
 
 def test_cli_missing_data_file_exits_2(tmp_path):

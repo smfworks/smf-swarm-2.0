@@ -33,6 +33,7 @@ _METADATA_IPS = frozenset(
     {
         ipaddress.ip_address("169.254.169.254"),
         ipaddress.ip_address("fd00:ec2::254"),
+        ipaddress.ip_address("100.100.100.200"),
     }
 )
 
@@ -87,13 +88,33 @@ def normalize_llm_base_url(base_url: str, *, name: str = "LLM base URL") -> str:
     )
 
 
-def _is_blocked_host(hostname: str) -> bool:
-    if hostname in _METADATA_HOSTS or hostname.endswith(".metadata.google.internal"):
-        return True
+def _canonical_ip(hostname: str) -> ipaddress._BaseAddress | None:
+    host = hostname.strip().lower()
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
     try:
-        return ipaddress.ip_address(hostname) in _METADATA_IPS
+        ip = ipaddress.ip_address(host)
     except ValueError:
+        return None
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        return ip.ipv4_mapped
+    return ip
+
+
+def _is_blocked_host(hostname: str) -> bool:
+    host = hostname.strip().lower().rstrip(".")
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    if host in _METADATA_HOSTS or host.endswith(".metadata.google.internal"):
+        return True
+    ip = _canonical_ip(host)
+    if ip is None:
         return False
+    if ip in _METADATA_IPS:
+        return True
+    if ip.is_link_local or ip.is_multicast:
+        return True
+    return False
 
 
 def validate_model_id(model: str, *, name: str = "LLM model") -> str:
