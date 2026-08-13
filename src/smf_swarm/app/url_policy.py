@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 from urllib.parse import urlparse
 
 _BLOCKED_HOSTS = {
@@ -14,6 +15,29 @@ _BLOCKED_HOSTS = {
 
 class UnsafeLLMURL(ValueError):
     """Raised when an LLM base URL is not safe to fetch."""
+
+
+def _host_is_blocked_ip(host: str) -> bool:
+    addr = None
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        if host.isdigit():
+            try:
+                addr = ipaddress.IPv4Address(int(host))
+            except (ValueError, OverflowError):
+                return False
+        else:
+            return False
+    if addr is None:
+        return False
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped
+    if addr.is_link_local or addr.is_multicast or addr.is_reserved:
+        return True
+    if addr in ipaddress.ip_network("169.254.0.0/16"):
+        return True
+    return False
 
 
 def validate_llm_base_url(url: str) -> str:
@@ -31,6 +55,6 @@ def validate_llm_base_url(url: str) -> str:
         raise UnsafeLLMURL("LLM base URL host is required")
     if host in _BLOCKED_HOSTS or host.endswith(".internal"):
         raise UnsafeLLMURL("LLM base URL host is not allowed")
-    if host.startswith("169.254."):
+    if host.startswith("169.254.") or _host_is_blocked_ip(host):
         raise UnsafeLLMURL("LLM base URL must not target link-local addresses")
     return cleaned.rstrip("/")

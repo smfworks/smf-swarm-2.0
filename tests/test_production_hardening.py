@@ -61,6 +61,8 @@ def test_signed_report_forbidden_without_secret(client):
         "http://169.254.169.254/latest/meta-data",
         "http://metadata.google.internal/computeMetadata/v1",
         "ftp://example.com/v1",
+        "http://[::ffff:169.254.169.254]/",
+        "http://2852039166/",
     ],
 )
 def test_llm_url_rejects_unsafe(url):
