@@ -8,3 +8,13 @@ build/
 data/
 *.jsonl
 .DS_Store
+.env
+.env.*
+!.env.example
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+.idea/
+.vscode/

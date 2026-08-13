@@ -12,7 +12,7 @@
 
 | | |
 |--|--|
-| **Version** | **0.5.0** |
+| **Version** | **0.5.1** |
 | **Package** | `smf-swarm` |
 | **Repo** | https://github.com/smfworks/smf-swarm-2.0 |
 | **License** | MIT (open source) |
@@ -160,10 +160,13 @@ Env fallbacks still work:
 
 ```bash
 pip install -e ".[dev]"
+ruff check src tests scripts
 pytest -q
 smf-swarm analyze -q "Smoke test" -d fixtures/sample_growth.csv --mode mock
 curl -s http://127.0.0.1:8787/api/health
 ```
+
+CI runs the same ruff + pytest commands on Python 3.10, 3.11, and 3.12 for every push and pull request to `main`.
 
 ---
 
@@ -172,6 +175,9 @@ curl -s http://127.0.0.1:8787/api/health
 | Doc | Purpose |
 |-----|---------|
 | **[INSTALL.md](INSTALL.md)** | End-user download, run, Settings, troubleshooting |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Dev setup, tests, PR conventions |
+| **[SECURITY.md](SECURITY.md)** | Vulnerability reporting and operational security |
+| **[CHANGELOG.md](CHANGELOG.md)** | Release notes |
 | **[AGENTS.md](AGENTS.md)** | Agent install / operate notes |
 | [`docs/PRODUCT_APP_v0.5.md`](docs/PRODUCT_APP_v0.5.md) | UI polish release notes |
 | [`docs/PRODUCT_APP_v0.4.1.md`](docs/PRODUCT_APP_v0.4.1.md) | Settings UI |
@@ -187,7 +193,6 @@ curl -s http://127.0.0.1:8787/api/health
 
 - Default analysis mode is **mock** (no network required).  
 - Outputs are **decision support**, not professional advice.  
-- Repo is currently private; install via Git clone as above.  
 - Keep docs in lockstep when changing CLI / API / UI.
 
 ## License
