@@ -120,8 +120,10 @@ class LLMCapabilityBackend:
         api_key: Optional[str] = None,
         timeout: float = 60.0,
     ) -> None:
+        from smf_swarm.config import normalize_llm_base_url
+
         self.model = model
-        self.base_url = base_url.rstrip("/")
+        self.base_url = normalize_llm_base_url(base_url).rstrip("/")
         self.api_key = api_key or ""
         self.timeout = timeout
 
