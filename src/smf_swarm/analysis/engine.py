@@ -512,7 +512,7 @@ persona_views (array of {{persona, role, findings (string array), confidence (0-
             "temperature": 0.3,
             "max_tokens": 3500,
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False, follow_redirects=False) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=body
             )

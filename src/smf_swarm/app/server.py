@@ -28,7 +28,7 @@ from smf_swarm.app.auth import (
     verify_run_signature,
 )
 from smf_swarm.app.history import RunHistory
-from smf_swarm.app.url_policy import UnsafeLLMURL, validate_llm_base_url
+from smf_swarm.app.url_policy import UnsafeLLMURL, env_llm_key_for, validate_llm_base_url
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_FILES = 8
@@ -80,13 +80,13 @@ def create_app() -> FastAPI:
         """Probe an OpenAI-compatible /models or minimal chat call."""
         url = (base_url or os.environ.get("SMF_SWARM_LLM_BASE_URL") or "").strip().rstrip("/")
         mdl = (model or os.environ.get("SMF_SWARM_LLM_MODEL") or "").strip()
-        key = (api_key or os.environ.get("SMF_SWARM_LLM_API_KEY") or "").strip()
         if not url:
             raise HTTPException(400, "base_url is required")
         try:
             url = validate_llm_base_url(url)
         except UnsafeLLMURL as exc:
             raise HTTPException(400, str(exc)) from exc
+        key = env_llm_key_for(url, api_key)
         try:
             import httpx
         except ImportError as e:
@@ -96,29 +96,16 @@ def create_app() -> FastAPI:
         if key:
             headers["Authorization"] = f"Bearer {key}"
         try:
-            with httpx.Client(timeout=20.0) as client:
+            with httpx.Client(timeout=20.0, trust_env=False, follow_redirects=False) as client:
                 # Prefer models list (cheap)
                 r = client.get(f"{url}/models", headers=headers)
                 if r.status_code < 400:
-                    models = []
-                    try:
-                        data = r.json()
-                        models = [
-                            m.get("id") for m in (data.get("data") or []) if isinstance(m, dict)
-                        ][:12]
-                    except ValueError:
-                        models = []
-                    ok_model = (not mdl) or (mdl in models) or (not models)
                     return {
                         "ok": True,
                         "endpoint": f"{url}/models",
                         "status_code": r.status_code,
-                        "models_sample": models,
                         "model_configured": mdl,
-                        "model_listed": (mdl in models) if models else None,
-                        "note": None
-                        if ok_model
-                        else "Configured model not in /models list (may still work)",
+                        "note": None,
                     }
                 # Fallback: tiny chat
                 if not mdl:
@@ -134,23 +121,18 @@ def create_app() -> FastAPI:
                 }
                 r2 = client.post(f"{url}/chat/completions", headers=headers, json=body)
                 if r2.status_code >= 400:
-                    raise HTTPException(
-                        502,
-                        f"LLM probe failed: models={r.status_code} chat={r2.status_code} {r2.text[:200]}",
-                    )
+                    raise HTTPException(502, "LLM probe failed")
                 return {
                     "ok": True,
                     "endpoint": f"{url}/chat/completions",
                     "status_code": r2.status_code,
-                    "models_sample": [],
                     "model_configured": mdl,
-                    "model_listed": None,
                     "note": "chat probe succeeded",
                 }
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(502, f"LLM connection failed: {e}") from e
+        except Exception:
+            raise HTTPException(502, "LLM connection failed") from None
 
     @app.post("/api/analyze")
     async def analyze(
@@ -226,11 +208,7 @@ def create_app() -> FastAPI:
             or os.environ.get("SMF_SWARM_LLM_MODEL")
             or None
         )
-        resolved_key = (
-            (llm_api_key or "").strip()
-            or os.environ.get("SMF_SWARM_LLM_API_KEY")
-            or ""
-        )
+        resolved_key = env_llm_key_for(resolved_base or "", llm_api_key)
 
         if mode == "llm" and not resolved_base:
             raise HTTPException(

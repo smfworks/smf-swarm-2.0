@@ -61,11 +61,25 @@ def test_signed_report_forbidden_without_secret(client):
         "http://169.254.169.254/latest/meta-data",
         "http://metadata.google.internal/computeMetadata/v1",
         "ftp://example.com/v1",
+        "http://instance-data/latest/meta-data",
+        "http://0xa9fea9fe/",
+        "http://0.0.0.0:80/",
+        "http://127.0.0.1:8888/v1?api_key=MARKER",
+        "https://ollama.com/v1",
     ],
 )
 def test_llm_url_rejects_unsafe(url):
     with pytest.raises(UnsafeLLMURL):
         validate_llm_base_url(url)
+
+
+def test_env_key_not_forwarded_to_foreign_url(monkeypatch):
+    from smf_swarm.app.url_policy import env_llm_key_for
+
+    monkeypatch.setenv("SMF_SWARM_LLM_BASE_URL", "http://127.0.0.1:8888/v1")
+    monkeypatch.setenv("SMF_SWARM_LLM_API_KEY", "ENVKEY_MARKER_DO_NOT_LEAK")
+    assert env_llm_key_for("http://attacker.example:9/v1", "") == ""
+    assert env_llm_key_for("http://127.0.0.1:8888/v1", "") == "ENVKEY_MARKER_DO_NOT_LEAK"
 
 
 def test_llm_url_accepts_http():
