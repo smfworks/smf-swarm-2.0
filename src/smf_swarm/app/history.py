@@ -3,9 +3,24 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, TextIO
+
+
+_PATH_LOCKS: dict[str, threading.Lock] = {}
+_PATH_LOCKS_GUARD = threading.Lock()
+
+
+def _path_lock(path: Path) -> threading.Lock:
+    key = os.path.normcase(os.path.abspath(str(path)))
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _PATH_LOCKS[key] = lock
+        return lock
 
 
 def default_history_path() -> Path:
@@ -18,20 +33,25 @@ def default_history_path() -> Path:
 
 @contextmanager
 def _exclusive_file(path: Path) -> Iterator[TextIO]:
-    """Open JSONL with an exclusive lock for the whole read-modify-write."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a+", encoding="utf-8") as handle:
-        if os.name == "posix":
-            import fcntl
+    """Serialize read-modify-write of the JSONL history file.
 
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield handle
-        finally:
+    In-process threads share a per-path ``threading.Lock`` (Windows has no
+    flock). POSIX also takes ``fcntl.LOCK_EX`` so two processes cannot interleave.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _path_lock(path):
+        with path.open("a+", encoding="utf-8") as handle:
             if os.name == "posix":
                 import fcntl
 
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield handle
+            finally:
+                if os.name == "posix":
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _read_lines(handle: TextIO) -> List[str]:

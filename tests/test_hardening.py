@@ -75,10 +75,9 @@ def test_share_secret_is_not_hardcoded(monkeypatch):
     import smf_swarm.app.auth as auth
 
     auth._ephemeral_share_secret = None
-    secret = share_secret()
-    assert secret
-    assert secret != "smf-swarm-dev-share-secret"
-    assert share_secret() == secret
+    with pytest.raises(RuntimeError, match="not configured"):
+        share_secret()
+    monkeypatch.setenv("SMF_SWARM_SHARE_SECRET", "unit-test-secret")
     rid = "abc123"
     assert verify_run_signature(rid, sign_run_id(rid))
 

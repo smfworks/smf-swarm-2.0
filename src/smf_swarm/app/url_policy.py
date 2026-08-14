@@ -50,7 +50,7 @@ def validate_llm_base_url(url: str) -> str:
     if not host:
         raise UnsafeLLMURL("LLM base URL host is required")
     if host in _BLOCKED_HOSTS or host.endswith(".internal") or host.endswith(".ollama.com"):
-        raise UnsafeLLMURL("LLM base URL host is not allowed")
+        raise UnsafeLLMURL("LLM base URL host is not allowed (metadata or blocked provider)")
     ip = _host_ip(host)
     if ip is not None:
         mapped = getattr(ip, "ipv4_mapped", None)
