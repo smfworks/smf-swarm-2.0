@@ -24,17 +24,37 @@
   let authRequired = false;
 
   const SETTINGS_KEY = "smf_swarm_llm_settings";
+  const KEY_SESSION = "smf_swarm_llm_api_key";
 
   function loadLlmSettings() {
     try {
-      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+      if (s.api_key) {
+        try {
+          sessionStorage.setItem(KEY_SESSION, s.api_key);
+        } catch {
+          /* ignore quota / private mode */
+        }
+        delete s.api_key;
+        const persist = { base_url: s.base_url || "", model: s.model || "" };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(persist));
+      }
+      s.api_key = sessionStorage.getItem(KEY_SESSION) || "";
+      return s;
     } catch {
       return {};
     }
   }
 
   function saveLlmSettings(obj) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj || {}));
+    const persist = {
+      base_url: (obj && obj.base_url) || "",
+      model: (obj && obj.model) || "",
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(persist));
+    const key = (obj && obj.api_key) || "";
+    if (key) sessionStorage.setItem(KEY_SESSION, key);
+    else sessionStorage.removeItem(KEY_SESSION);
   }
 
   function applySettingsToForm() {
@@ -77,6 +97,7 @@
   });
   document.getElementById("clearSettings")?.addEventListener("click", () => {
     localStorage.removeItem(SETTINGS_KEY);
+    sessionStorage.removeItem(KEY_SESSION);
     applySettingsToForm();
     document.getElementById("llmBaseUrl").value = "";
     document.getElementById("llmModel").value = "";

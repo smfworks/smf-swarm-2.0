@@ -142,7 +142,7 @@ In the web UI: **Settings** (top right)
 | Model | Model id |
 | API key | Optional; blank can use server env |
 
-Saved in **browser localStorage**. Sent only when you **Run** (LLM mode) or **Test connection**.
+Saved in **browser localStorage** (base URL + model only). API keys stay in **sessionStorage**. Sent only when you **Run** (LLM mode) or **Test connection**.
 
 Env fallbacks still work:
 

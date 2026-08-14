@@ -12,6 +12,11 @@ All notable changes to this project are documented here.
 - HTTP clients now disable env-proxy trust and redirect following.
 - Do not echo exception bodies or LLM probe response text to API clients.
 - Sanitize upload filenames; skip corrupt audit-log lines instead of crashing.
+- Block IPv4-mapped and other link-local aliases of cloud metadata (`http://[::ffff:169.254.169.254]/`).
+- When API auth is enabled, `/share/{id}` and `/api/share/{id}` require `?s=` HMAC; share JSON redacts `signed_url_path`.
+- History JSONL append/trim uses exclusive `fcntl` locking (POSIX).
+- Settings UI no longer writes LLM API keys to `localStorage` (sessionStorage only; migrates old keys).
+- Eval harness requires `SMF_SWARM_EVAL_BASE_URL` — `DEFAULT_EVAL_BASE_URL` is empty.
 
 ### Added
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -94,7 +95,12 @@ class AuditLog:
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as f:
+                if os.name == "posix":
+                    import fcntl
+
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 f.write(_canonical(asdict(ev)) + "\n")
+                f.flush()
         return ev
 
     def verify_chain(self) -> bool:

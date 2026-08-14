@@ -47,7 +47,7 @@ Click **Settings** (top right):
 3. Optional API key  
 4. **Save** or **Test connection**
 
-Settings are stored in browser localStorage and override env vars for that browser.
+Base URL and model are stored in browser localStorage; the API key stays in sessionStorage. They override env vars for that browser session.
 
 ## Use from the terminal (agents / scripts)
 

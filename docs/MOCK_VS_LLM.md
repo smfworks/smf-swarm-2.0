@@ -3,7 +3,7 @@
 **Date:** 2026-07-13  
 **Owner:** Aiona Edge  
 **Fixture:** `fixtures/skillopt_edit_planning_trajectories.json`  
-**LLM:** configure `SMF_SWARM_EVAL_BASE_URL` + `SMF_SWARM_EVAL_MODEL` (default eval URL is `http://127.0.0.1:8888/v1`)  
+**LLM:** configure `SMF_SWARM_EVAL_BASE_URL` + `SMF_SWARM_EVAL_MODEL` (no implicit default URL)  
 **Runner:** `scripts/compare_mock_vs_llm.py`  
 **Local artifact (gitignored):** `data/mock_vs_llm_comparison.json`
 

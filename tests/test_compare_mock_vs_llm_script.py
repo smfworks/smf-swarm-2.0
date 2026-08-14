@@ -9,6 +9,12 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _require_explicit_eval_url(monkeypatch):
+    """Harness tests opt in; production code has no implicit default."""
+    monkeypatch.setenv("SMF_SWARM_EVAL_BASE_URL", "http://127.0.0.1:8888/v1")
+
+
 def _load_compare_module():
     path = Path(__file__).resolve().parents[1] / "scripts" / "compare_mock_vs_llm.py"
     spec = importlib.util.spec_from_file_location("compare_mock_vs_llm", path)
