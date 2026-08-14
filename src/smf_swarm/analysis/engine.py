@@ -234,7 +234,7 @@ def _keywords(text: str) -> List[str]:
     stop = {
         "the", "and", "for", "with", "that", "this", "from", "will", "have",
         "what", "when", "where", "which", "into", "about", "your", "their",
-        "over", "past", "above", "below", "than", "this", "week", "month",
+        "over", "past", "above", "below", "than", "week", "month",
     }
     words = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{3,}", text.lower())
     freq: Dict[str, int] = {}
@@ -512,9 +512,7 @@ persona_views (array of {{persona, role, findings (string array), confidence (0-
             "temperature": 0.3,
             "max_tokens": 3500,
         }
-        from smf_swarm.config import httpx_client_kwargs
-
-        with httpx.Client(**httpx_client_kwargs(self.timeout)) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False, follow_redirects=False) as client:
             r = client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=body
             )
@@ -635,13 +633,10 @@ class PredictiveSwarmEngine:
     ) -> None:
         from smf_swarm.governance import AuditLog, IdentityRegistry, PermissionEngine
 
-        from smf_swarm.config import env_str, normalize_llm_base_url, optional_model_id
-
         self.requested_mode = mode if mode in ("mock", "llm") else "mock"
         self.mode = self.requested_mode
-        self.llm_model = optional_model_id(llm_model or env_str("SMF_SWARM_LLM_MODEL") or None) or ""
-        raw_base = (llm_base_url or env_str("SMF_SWARM_LLM_BASE_URL") or "").strip()
-        self.llm_base_url = normalize_llm_base_url(raw_base) if raw_base else ""
+        self.llm_model = llm_model
+        self.llm_base_url = llm_base_url
         self.fallback_used = False
         self.backend: "LLMPredictiveBackend | MockPredictiveBackend"
 
@@ -669,18 +664,19 @@ class PredictiveSwarmEngine:
         )
 
         if self.mode == "llm":
+            from smf_swarm.app.url_policy import validate_llm_base_url
+
             if not self.llm_base_url:
-                raise ValueError(
-                    "LLM mode requires llm_base_url or SMF_SWARM_LLM_BASE_URL"
-                )
+                raise ValueError("LLM mode requires llm_base_url")
             if not self.llm_model:
-                raise ValueError(
-                    "LLM mode requires llm_model or SMF_SWARM_LLM_MODEL"
-                )
+                raise ValueError("LLM mode requires llm_model")
+            base = validate_llm_base_url(self.llm_base_url)
+            model = self.llm_model
+            self.llm_base_url = base
             self.backend = LLMPredictiveBackend(
-                model=self.llm_model,
-                base_url=self.llm_base_url,
-                api_key=(llm_api_key or env_str("SMF_SWARM_LLM_API_KEY") or "").strip(),
+                model=model,
+                base_url=base,
+                api_key=llm_api_key or "",
                 timeout=120.0,
             )
         else:
@@ -772,7 +768,7 @@ class PredictiveSwarmEngine:
         model_used = (
             "heuristic-mock"
             if self.mode == "mock"
-            else self.llm_model
+            else (self.llm_model or "")
         )
 
         report = PredictiveReport(

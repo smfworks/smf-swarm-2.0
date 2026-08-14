@@ -1,7 +1,6 @@
 """FastAPI application for SMF Swarm predictive analysis UI (v0.4)."""
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -24,22 +23,17 @@ from smf_swarm.app.auth import (
     public_share_report,
     require_api_auth,
     require_share_access,
+    share_signing_configured,
     sign_run_id,
     verify_run_signature,
 )
 from smf_swarm.app.history import RunHistory
-from smf_swarm.config import (
-    MAX_FILE_BYTES,
-    MAX_FILES,
-    MAX_QUESTION_CHARS,
-    httpx_client_kwargs,
-    normalize_llm_base_url,
-    optional_model_id,
-    safe_filename,
-)
+from smf_swarm.app.url_policy import UnsafeLLMURL, env_llm_key_for, validate_llm_base_url
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-_log = logging.getLogger("smf_swarm.app")
+MAX_FILES = 8
+MAX_FILE_BYTES = 5 * 1024 * 1024
+ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json", ".txt", ".md", ".tsv", ".log"}
 
 
 def create_app() -> FastAPI:
@@ -69,10 +63,11 @@ def create_app() -> FastAPI:
             "mode_default": os.environ.get("SMF_SWARM_MODE", "mock"),
             "auth_required": auth_enabled(),
             "llm_defaults": {
-                "base_url": os.environ.get("SMF_SWARM_LLM_BASE_URL", ""),
-                "model": os.environ.get("SMF_SWARM_LLM_MODEL", ""),
+                "has_llm_base_url": bool(os.environ.get("SMF_SWARM_LLM_BASE_URL", "").strip()),
+                "has_model": bool(os.environ.get("SMF_SWARM_LLM_MODEL", "").strip()),
                 "has_env_api_key": bool(os.environ.get("SMF_SWARM_LLM_API_KEY")),
             },
+            "share_signing": share_signing_configured(),
         }
 
     @app.post("/api/llm/test")
@@ -83,17 +78,15 @@ def create_app() -> FastAPI:
         _auth: None = Depends(require_api_auth),
     ):
         """Probe an OpenAI-compatible /models or minimal chat call."""
-        raw_url = (base_url or os.environ.get("SMF_SWARM_LLM_BASE_URL") or "").strip()
-        try:
-            url = normalize_llm_base_url(raw_url) if raw_url else ""
-            mdl = optional_model_id(
-                model or os.environ.get("SMF_SWARM_LLM_MODEL") or None
-            ) or ""
-        except ValueError as e:
-            raise HTTPException(400, str(e)) from e
-        key = (api_key or os.environ.get("SMF_SWARM_LLM_API_KEY") or "").strip()
+        url = (base_url or os.environ.get("SMF_SWARM_LLM_BASE_URL") or "").strip().rstrip("/")
+        mdl = (model or os.environ.get("SMF_SWARM_LLM_MODEL") or "").strip()
         if not url:
             raise HTTPException(400, "base_url is required")
+        try:
+            url = validate_llm_base_url(url)
+        except UnsafeLLMURL as exc:
+            raise HTTPException(400, str(exc)) from exc
+        key = env_llm_key_for(url, api_key)
         try:
             import httpx
         except ImportError as e:
@@ -103,29 +96,16 @@ def create_app() -> FastAPI:
         if key:
             headers["Authorization"] = f"Bearer {key}"
         try:
-            with httpx.Client(**httpx_client_kwargs(20.0)) as client:
+            with httpx.Client(timeout=20.0, trust_env=False, follow_redirects=False) as client:
                 # Prefer models list (cheap)
                 r = client.get(f"{url}/models", headers=headers)
                 if r.status_code < 400:
-                    models = []
-                    try:
-                        data = r.json()
-                        models = [
-                            m.get("id") for m in (data.get("data") or []) if isinstance(m, dict)
-                        ][:12]
-                    except Exception:
-                        pass
-                    ok_model = (not mdl) or (mdl in models) or (not models)
                     return {
                         "ok": True,
                         "endpoint": f"{url}/models",
                         "status_code": r.status_code,
-                        "models_sample": models,
                         "model_configured": mdl,
-                        "model_listed": (mdl in models) if models else None,
-                        "note": None
-                        if ok_model
-                        else "Configured model not in /models list (may still work)",
+                        "note": None,
                     }
                 # Fallback: tiny chat
                 if not mdl:
@@ -141,23 +121,17 @@ def create_app() -> FastAPI:
                 }
                 r2 = client.post(f"{url}/chat/completions", headers=headers, json=body)
                 if r2.status_code >= 400:
-                    raise HTTPException(
-                        502,
-                        f"LLM probe failed: models={r.status_code} chat={r2.status_code}",
-                    )
+                    raise HTTPException(502, "LLM probe failed")
                 return {
                     "ok": True,
                     "endpoint": f"{url}/chat/completions",
                     "status_code": r2.status_code,
-                    "models_sample": [],
                     "model_configured": mdl,
-                    "model_listed": None,
                     "note": "chat probe succeeded",
                 }
         except HTTPException:
             raise
         except Exception:
-            _log.exception("LLM connection probe failed")
             raise HTTPException(502, "LLM connection failed") from None
 
     @app.post("/api/analyze")
@@ -173,7 +147,7 @@ def create_app() -> FastAPI:
         q = (question or "").strip()
         if not q:
             raise HTTPException(400, "question is required")
-        if len(q) > MAX_QUESTION_CHARS:
+        if len(q) > 8000:
             raise HTTPException(400, "question too long")
 
         mode = (mode or "mock").lower().strip()
@@ -188,7 +162,14 @@ def create_app() -> FastAPI:
         for uf in upload_list:
             if not uf.filename:
                 continue
-            filename = safe_filename(uf.filename)
+            filename = Path(uf.filename).name
+            suffix = Path(filename).suffix.lower()
+            if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+                raise HTTPException(
+                    400,
+                    f"{filename}: extension not allowed "
+                    f"(use {', '.join(sorted(ALLOWED_UPLOAD_SUFFIXES))})",
+                )
             raw = await uf.read()
             if len(raw) > MAX_FILE_BYTES:
                 raise HTTPException(400, f"{filename}: file too large (max 5MB)")
@@ -211,29 +192,28 @@ def create_app() -> FastAPI:
         audit_path = history.path.parent / "app-audit.jsonl"
 
         # Prefer per-request UI settings; fall back to process env
-        try:
-            raw_base = (llm_base_url or "").strip() or os.environ.get("SMF_SWARM_LLM_BASE_URL") or ""
-            resolved_base = normalize_llm_base_url(raw_base) if raw_base.strip() else None
-            resolved_model = optional_model_id(
-                (llm_model or "").strip() or os.environ.get("SMF_SWARM_LLM_MODEL") or None
-            )
-        except ValueError as e:
-            raise HTTPException(400, str(e)) from e
-        resolved_key = (
-            (llm_api_key or "").strip()
-            or os.environ.get("SMF_SWARM_LLM_API_KEY")
-            or ""
+        raw_base = (
+            (llm_base_url or "").strip()
+            or os.environ.get("SMF_SWARM_LLM_BASE_URL")
+            or None
         )
+        resolved_base = None
+        if raw_base:
+            try:
+                resolved_base = validate_llm_base_url(raw_base)
+            except UnsafeLLMURL as exc:
+                raise HTTPException(400, str(exc)) from exc
+        resolved_model = (
+            (llm_model or "").strip()
+            or os.environ.get("SMF_SWARM_LLM_MODEL")
+            or None
+        )
+        resolved_key = env_llm_key_for(resolved_base or "", llm_api_key)
 
         if mode == "llm" and not resolved_base:
             raise HTTPException(
                 400,
                 "LLM mode requires a base URL (Settings → LLM endpoint, or SMF_SWARM_LLM_BASE_URL)",
-            )
-        if mode == "llm" and not resolved_model:
-            raise HTTPException(
-                400,
-                "LLM mode requires a model (Settings → Model, or SMF_SWARM_LLM_MODEL)",
             )
 
         engine = PredictiveSwarmEngine(
@@ -245,24 +225,26 @@ def create_app() -> FastAPI:
         )
         try:
             report = engine.run(q, attachments)
-        except ValueError as e:
-            raise HTTPException(400, str(e)) from e
-        except Exception:
-            _log.exception("analysis failed")
-            raise HTTPException(500, "analysis failed") from None
+        except Exception as e:
+            raise HTTPException(500, f"analysis failed: {e}") from e
 
         share_id = new_share_id()
         report.share_id = share_id
-        sig = sign_run_id(report.run_id)
         report.share_path = public_share_path(share_id)
         payload = report.to_dict()
         payload["markdown"] = report.to_markdown()
         payload["share_url_path"] = report.share_path
-        payload["signed_url_path"] = f"/r/{report.run_id}?s={sig}"
+        if share_signing_configured():
+            sig = sign_run_id(report.run_id)
+            payload["signed_url_path"] = f"/r/{report.run_id}?s={sig}"
+        else:
+            payload["signed_url_path"] = None
         try:
             history.append(payload)
-        except Exception:
-            _log.exception("failed to persist run history for %s", report.run_id)
+        except OSError:
+            import logging
+
+            logging.getLogger("smf_swarm").exception("history append failed")
         return payload
 
     @app.get("/api/history")

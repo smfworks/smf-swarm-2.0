@@ -37,7 +37,8 @@ def test_engine_includes_charts():
     assert report.charts[0]["sparkline_svg"]
 
 
-def test_share_signature():
+def test_share_signature(monkeypatch):
+    monkeypatch.setenv("SMF_SWARM_SHARE_SECRET", "test-share-secret")
     rid = "abc123"
     sig = sign_run_id(rid)
     assert verify_run_signature(rid, sig)

@@ -75,7 +75,8 @@ def test_share_signed_query_works_when_auth_enabled(auth_client):
     assert "secret-token-xyz" not in dumped
 
 
-def test_share_api_redacts_signed_run_url(client):
+def test_share_api_redacts_signed_run_url(client, monkeypatch):
+    monkeypatch.setenv("SMF_SWARM_SHARE_SECRET", "unit-test-share-secret")
     created = client.post(
         "/api/analyze",
         data={"question": "Will demand grow next quarter?", "mode": "mock"},
@@ -179,7 +180,7 @@ def test_app_js_does_not_persist_api_key_in_localstorage():
 def test_package_version_is_051():
     from smf_swarm import __version__
 
-    assert __version__ == "0.5.1"
+    assert __version__ == "0.5.2"
 
 
 @pytest.mark.skipif(os.name != "posix", reason="fcntl locking is POSIX")
