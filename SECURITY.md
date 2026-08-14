@@ -28,8 +28,15 @@ We aim to acknowledge reports within 5 business days.
 - LLM base URLs must be absolute `http`/`https` with no embedded credentials, query, or fragment. Cloud metadata hosts are rejected.
 - Share pages (`/share/{id}`) are unguessable. If `SMF_SWARM_API_TOKEN` is set they also require `?s=` HMAC (same key as `/r/`). `/api/share/{id}` never returns `signed_url_path`.
 - LLM API keys entered in the Settings UI are kept in **sessionStorage** only (cleared when the tab closes). Base URL and model may persist in localStorage. Prefer `SMF_SWARM_LLM_API_KEY` in the process environment.
-- Signed `/r/{run_id}?s=` links use `SMF_SWARM_SHARE_SECRET` (or the API token). If neither is set, a process-ephemeral key is used and signed links die on restart.
+- Signed `/r/{run_id}?s=` links use `SMF_SWARM_SHARE_SECRET` (or the API token). If neither is set, signing is **not configured**: `share_secret()` raises, analyze omits `signed_url_path`, and unsigned `/r/` returns **403**. There is no process-ephemeral HMAC fallback.
 - Eval harness (`scripts/compare_mock_vs_llm.py`) requires `SMF_SWARM_EVAL_BASE_URL`. There is no implicit `127.0.0.1:8888` default.
+
+## Residual risks (honest)
+
+- Optional auth is the open-core model. Binding past loopback without `SMF_SWARM_API_TOKEN` is an operator choice, not a defect.
+- `/share/{id}` remains an unauthenticated read if the attacker knows the share id (unless API auth is on, in which case `?s=` is required).
+- User-supplied LLM URLs that pass the allowlist are still fetched by the server (SSRF to permitted hosts, including RFC1918 and loopback). That is required for local-first DGX/Ollama use.
+- URL policy is hostname/IP-literal based. DNS aliases and some IPv6 link-local forms are not a complete SSRF guarantee.
 
 ## Secrets in git history
 

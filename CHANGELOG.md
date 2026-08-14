@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.2 — 2026-08-14
+
+### Security
+
+- Share HMAC is fail-closed. If neither `SMF_SWARM_SHARE_SECRET` nor `SMF_SWARM_API_TOKEN` is set, the process does not mint a usable `/r/` signature.
+- `/api/health` reports booleans only (`has_llm_base_url`, `has_model`, `has_env_api_key`).
+- LLM URL allowlist covers the app, engine, CLI, eval harness, and capability diagnostic backend.
+- Uploads are basename-only with an extension allowlist; POSIX history uses `0700` / `0600`.
+
+### Added
+
+- CI now runs `mypy src` and a mock CLI smoke beside ruff + pytest on Python 3.10–3.12.
+- `mypy` is part of the `dev` extra.
+
+### Changed
+
+- Docs match the fail-closed share contract. `SECURITY.md` no longer claims a process-ephemeral signer.
+- `docs/PHASE1_STATUS.md` is labeled as Phase 1 history; current product is public 0.5.2.
+
 ## 0.5.1 — 2026-08-13
 
 ### Security

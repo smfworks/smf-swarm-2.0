@@ -90,7 +90,7 @@ def normalize_llm_base_url(base_url: str, *, name: str = "LLM base URL") -> str:
     )
 
 
-def _canonical_ip(hostname: str) -> ipaddress._BaseAddress | None:
+def _canonical_ip(hostname: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     host = hostname.strip().lower()
     if host.startswith("[") and host.endswith("]"):
         host = host[1:-1]

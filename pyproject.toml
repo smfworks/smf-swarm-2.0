@@ -50,6 +50,7 @@ dev = [
   "python-multipart>=0.0.9",
   "build>=1.0",
   "ruff>=0.6",
+  "mypy>=1.10",
 ]
 
 [project.scripts]
@@ -74,3 +75,9 @@ src = ["src", "tests", "scripts"]
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["smf_swarm"]
+ignore_missing_imports = true
+warn_unused_ignores = true
