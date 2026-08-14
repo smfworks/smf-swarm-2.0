@@ -18,11 +18,27 @@ from smf_swarm.config import (
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
+    import ipaddress
+    import os
+
     import uvicorn
 
     configure_logging()
     host = args.host
     port = args.port
+    open_bind = (os.environ.get("SMF_SWARM_ALLOW_OPEN_BIND") or "").strip() == "1"
+    loopback = False
+    try:
+        loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = host in {"localhost", "127.0.0.1", "::1"}
+    if not loopback and not env_str("SMF_SWARM_API_TOKEN") and not open_bind:
+        print(
+            "error: non-loopback bind requires SMF_SWARM_API_TOKEN "
+            "(or SMF_SWARM_ALLOW_OPEN_BIND=1 for explicit local demos)",
+            file=sys.stderr,
+        )
+        return 2
     print(f"SMF Swarm UI → http://{host}:{port}")
     print("  POST /api/analyze  |  GET /api/health")
     uvicorn.run(
