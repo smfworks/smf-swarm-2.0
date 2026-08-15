@@ -1,8 +1,9 @@
 # AGENTS.md — SMF Swarm
 
 **Package:** `smf-swarm`  
-**Version:** 0.5.0  
+**Version:** 0.5.2  
 **Role:** Standalone predictive analysis app + governance-first swarm library  
+**Repo:** https://github.com/smfworks/smf-swarm-2.0 (public, MIT)
 
 ## For AI agents installing / operating this package
 
@@ -32,12 +33,17 @@ GitHub homepage assets: logo then UI screenshot under `docs/assets/`.
 smf-swarm analyze -q "Your predictive question" -d data.csv --mode mock -o report.json
 ```
 
-### Verify
+### Verify (same as CI)
 
 ```bash
+pip install -e ".[dev]"
+ruff check src tests scripts
+mypy src
 pytest -q
-curl -s http://127.0.0.1:8787/api/health
+smf-swarm analyze -q "Smoke test" -d fixtures/sample_growth.csv --mode mock
 ```
+
+CI runs ruff, mypy, pytest, and the mock CLI smoke on Python 3.10, 3.11, and 3.12 for every push and pull request to `main`.
 
 ## Do / Don't
 

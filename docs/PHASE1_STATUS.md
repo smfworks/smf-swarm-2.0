@@ -7,7 +7,7 @@
 
 The sections below are **Phase 1 history** (2026-07-13, v0.1.0 / 6 tests). They are not current product status.
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-15
 
 ---
 

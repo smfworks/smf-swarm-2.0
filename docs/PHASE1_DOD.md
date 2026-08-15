@@ -46,3 +46,5 @@
 ## Closure note
 
 Phase 1 is **closed for the first run**. Next product work should be driven by a concrete need (real SkillOpt trajectory export, Phase 2 identity crypto spike, or vertical demo)—not more layers without a consumer.
+
+> **Historical lock.** The 6-passed count above is the 2026-07-13 baseline. Current test suite, CI, and release notes live in [`PHASE1_STATUS.md`](PHASE1_STATUS.md) and [`CHANGELOG.md`](../CHANGELOG.md).
