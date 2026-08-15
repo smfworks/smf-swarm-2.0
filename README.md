@@ -12,7 +12,7 @@
 
 | | |
 |--|--|
-| **Version** | **0.5.1** |
+| **Version** | **0.5.2** |
 | **Package** | `smf-swarm` |
 | **Repo** | https://github.com/smfworks/smf-swarm-2.0 |
 | **License** | MIT (open source) |
@@ -152,6 +152,7 @@ Env fallbacks still work:
 | `SMF_SWARM_LLM_MODEL` | Default model |
 | `SMF_SWARM_LLM_API_KEY` | Default API key |
 | `SMF_SWARM_API_TOKEN` | Protect analyze/history if set |
+| `SMF_SWARM_SHARE_SECRET` | HMAC key for signed `/r/{run_id}?s=` links (fail-closed if unset) |
 | `SMF_SWARM_HISTORY` | Override history JSONL path |
 
 ---
@@ -161,12 +162,13 @@ Env fallbacks still work:
 ```bash
 pip install -e ".[dev]"
 ruff check src tests scripts
+mypy src
 pytest -q
 smf-swarm analyze -q "Smoke test" -d fixtures/sample_growth.csv --mode mock
 curl -s http://127.0.0.1:8787/api/health
 ```
 
-CI runs the same ruff + pytest commands on Python 3.10, 3.11, and 3.12 for every push and pull request to `main`.
+CI runs ruff, mypy, pytest, and the mock CLI smoke on Python 3.10, 3.11, and 3.12 for every push and pull request to `main`.
 
 ---
 

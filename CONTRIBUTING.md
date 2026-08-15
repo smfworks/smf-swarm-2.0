@@ -17,7 +17,9 @@ pip install -e ".[dev]"
 
 ```bash
 ruff check src tests scripts
+mypy src
 pytest -q
+smf-swarm analyze -q "CI smoke" -d fixtures/sample_growth.csv --mode mock
 ```
 
 Use **mock** mode in tests and CI. Do not call live LLM endpoints from unit tests.

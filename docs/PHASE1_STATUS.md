@@ -1,7 +1,19 @@
-# SMF Swarm 2.0 — Phase 1 Status
+# SMF Swarm 2.0 — Status
 
-**Last updated:** 2026-07-13  
-**Package version:** 0.1.0  
+**Current package:** 0.5.2 (public platform core)  
+**Offline tests:** `pytest -q` (see CI; 125 passed on 2026-08-14)  
+**CI:** ruff + mypy + pytest + mock CLI smoke on Python 3.10–3.12  
+**Repo:** https://github.com/smfworks/smf-swarm-2.0 (public)
+
+The sections below are **Phase 1 history** (2026-07-13, v0.1.0 / 6 tests). They are not current product status.
+
+**Last updated:** 2026-08-14
+
+---
+
+# Historical record (2026-07-13)
+
+**Package version then:** 0.1.0  
 **Branch:** `main`
 
 ## Summary
@@ -13,8 +25,8 @@ Phase 1 foundation is **implemented, tested, dogfooded, and dual-path validated*
 | Governance hooks | Done — identity, hash-chained audit, permissions |
 | Capability diagnostic | Done — mock + LLM backends |
 | Phase1Pipeline | Done — permission-gated diagnosis |
-| Offline tests | Green — `pytest -q` → 6 passed |
-| GitHub | https://github.com/smfworks/smf-swarm-2.0 (private) |
+| Offline tests | Green — `pytest -q` → 6 passed (historical) |
+| GitHub | listed private at the time; repo is public now |
 
 ## Notable commits
 
